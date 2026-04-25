@@ -71,3 +71,26 @@ backend/models/
 
 # Trae
 .trae/
+
+# Vercel
+.vercel
+
+# Claude skills
+.claude/
+~/.claude/
+
+# Model files
+*.pth
+*.onnx
+*.pb
+*.h5
+*.ckpt
+
+# Cache
+.cache/
+*.cache
+
+# Large binaries
+*.exe
+*.dll
+*.node

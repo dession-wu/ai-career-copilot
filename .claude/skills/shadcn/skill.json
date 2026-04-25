@@ -1,9 +1,0 @@
-{
-  "name": "shadcn",
-  "version": "1.0.0",
-  "description": "shadcn/ui skill for managing and using shadcn/ui components",
-  "author": "shadcn/ui",
-  "source": "https://skills.sh/shadcn/ui/shadcn",
-  "tags": ["ui", "components", "react", "tailwind", "design-system"],
-  "tools": ["Bash", "Read", "Edit", "Write"]
-}
