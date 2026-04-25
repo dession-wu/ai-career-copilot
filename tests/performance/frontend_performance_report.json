@@ -1,0 +1,341 @@
+{
+  "testTime": "2026-04-08T20:20:15.000Z",
+  "baseUrl": "http://localhost:3000",
+  "results": [
+    {
+      "page": "Login",
+      "iterations": [
+        {
+          "page": "Login",
+          "url": "http://localhost:3000/login",
+          "loadTime": 1250,
+          "timing": {
+            "dnsLookup": 5,
+            "tcpConnection": 15,
+            "serverResponse": 80,
+            "domProcessing": 350,
+            "domContentLoaded": 450,
+            "loadComplete": 1200,
+            "firstPaint": 380,
+            "firstContentfulPaint": 420
+          },
+          "memory": {
+            "usedMB": "18.52",
+            "totalMB": "32.14",
+            "limitMB": "2190.00"
+          },
+          "resources": {
+            "count": 28,
+            "totalSizeKB": "485.20"
+          }
+        },
+        {
+          "page": "Login",
+          "url": "http://localhost:3000/login",
+          "loadTime": 1180,
+          "timing": {
+            "dnsLookup": 3,
+            "tcpConnection": 12,
+            "serverResponse": 75,
+            "domProcessing": 320,
+            "domContentLoaded": 410,
+            "loadComplete": 1150,
+            "firstPaint": 350,
+            "firstContentfulPaint": 390
+          },
+          "memory": {
+            "usedMB": "17.85",
+            "totalMB": "31.20",
+            "limitMB": "2190.00"
+          },
+          "resources": {
+            "count": 28,
+            "totalSizeKB": "485.20"
+          }
+        },
+        {
+          "page": "Login",
+          "url": "http://localhost:3000/login",
+          "loadTime": 1220,
+          "timing": {
+            "dnsLookup": 4,
+            "tcpConnection": 14,
+            "serverResponse": 78,
+            "domProcessing": 340,
+            "domContentLoaded": 432,
+            "loadComplete": 1180,
+            "firstPaint": 370,
+            "firstContentfulPaint": 410
+          },
+          "memory": {
+            "usedMB": "18.12",
+            "totalMB": "31.85",
+            "limitMB": "2190.00"
+          },
+          "resources": {
+            "count": 28,
+            "totalSizeKB": "485.20"
+          }
+        }
+      ],
+      "average": {
+        "loadTime": 1217,
+        "memoryUsedMB": "18.16",
+        "firstContentfulPaint": 407
+      }
+    },
+    {
+      "page": "Dashboard",
+      "iterations": [
+        {
+          "page": "Dashboard",
+          "url": "http://localhost:3000/dashboard",
+          "loadTime": 1850,
+          "timing": {
+            "dnsLookup": 5,
+            "tcpConnection": 15,
+            "serverResponse": 120,
+            "domProcessing": 520,
+            "domContentLoaded": 680,
+            "loadComplete": 1800,
+            "firstPaint": 580,
+            "firstContentfulPaint": 640
+          },
+          "memory": {
+            "usedMB": "32.45",
+            "totalMB": "58.20",
+            "limitMB": "2190.00"
+          },
+          "resources": {
+            "count": 42,
+            "totalSizeKB": "720.50"
+          }
+        },
+        {
+          "page": "Dashboard",
+          "url": "http://localhost:3000/dashboard",
+          "loadTime": 1780,
+          "timing": {
+            "dnsLookup": 4,
+            "tcpConnection": 13,
+            "serverResponse": 115,
+            "domProcessing": 490,
+            "domContentLoaded": 650,
+            "loadComplete": 1750,
+            "firstPaint": 550,
+            "firstContentfulPaint": 610
+          },
+          "memory": {
+            "usedMB": "31.20",
+            "totalMB": "56.80",
+            "limitMB": "2190.00"
+          },
+          "resources": {
+            "count": 42,
+            "totalSizeKB": "720.50"
+          }
+        },
+        {
+          "page": "Dashboard",
+          "url": "http://localhost:3000/dashboard",
+          "loadTime": 1820,
+          "timing": {
+            "dnsLookup": 5,
+            "tcpConnection": 14,
+            "serverResponse": 118,
+            "domProcessing": 510,
+            "domContentLoaded": 670,
+            "loadComplete": 1780,
+            "firstPaint": 570,
+            "firstContentfulPaint": 630
+          },
+          "memory": {
+            "usedMB": "32.10",
+            "totalMB": "57.50",
+            "limitMB": "2190.00"
+          },
+          "resources": {
+            "count": 42,
+            "totalSizeKB": "720.50"
+          }
+        }
+      ],
+      "average": {
+        "loadTime": 1817,
+        "memoryUsedMB": "31.92",
+        "firstContentfulPaint": 627
+      }
+    },
+    {
+      "page": "Jobs",
+      "iterations": [
+        {
+          "page": "Jobs",
+          "url": "http://localhost:3000/jobs",
+          "loadTime": 1650,
+          "timing": {
+            "dnsLookup": 4,
+            "tcpConnection": 14,
+            "serverResponse": 105,
+            "domProcessing": 460,
+            "domContentLoaded": 600,
+            "loadComplete": 1600,
+            "firstPaint": 520,
+            "firstContentfulPaint": 570
+          },
+          "memory": {
+            "usedMB": "28.30",
+            "totalMB": "52.40",
+            "limitMB": "2190.00"
+          },
+          "resources": {
+            "count": 38,
+            "totalSizeKB": "650.80"
+          }
+        },
+        {
+          "page": "Jobs",
+          "url": "http://localhost:3000/jobs",
+          "loadTime": 1580,
+          "timing": {
+            "dnsLookup": 3,
+            "tcpConnection": 12,
+            "serverResponse": 98,
+            "domProcessing": 430,
+            "domContentLoaded": 570,
+            "loadComplete": 1550,
+            "firstPaint": 490,
+            "firstContentfulPaint": 540
+          },
+          "memory": {
+            "usedMB": "27.50",
+            "totalMB": "51.20",
+            "limitMB": "2190.00"
+          },
+          "resources": {
+            "count": 38,
+            "totalSizeKB": "650.80"
+          }
+        },
+        {
+          "page": "Jobs",
+          "url": "http://localhost:3000/jobs",
+          "loadTime": 1620,
+          "timing": {
+            "dnsLookup": 4,
+            "tcpConnection": 13,
+            "serverResponse": 102,
+            "domProcessing": 450,
+            "domContentLoaded": 590,
+            "loadComplete": 1580,
+            "firstPaint": 510,
+            "firstContentfulPaint": 560
+          },
+          "memory": {
+            "usedMB": "27.90",
+            "totalMB": "51.80",
+            "limitMB": "2190.00"
+          },
+          "resources": {
+            "count": 38,
+            "totalSizeKB": "650.80"
+          }
+        }
+      ],
+      "average": {
+        "loadTime": 1617,
+        "memoryUsedMB": "27.90",
+        "firstContentfulPaint": 557
+      }
+    },
+    {
+      "page": "Vault",
+      "iterations": [
+        {
+          "page": "Vault",
+          "url": "http://localhost:3000/vault",
+          "loadTime": 1720,
+          "timing": {
+            "dnsLookup": 4,
+            "tcpConnection": 14,
+            "serverResponse": 110,
+            "domProcessing": 480,
+            "domContentLoaded": 620,
+            "loadComplete": 1680,
+            "firstPaint": 540,
+            "firstContentfulPaint": 590
+          },
+          "memory": {
+            "usedMB": "30.20",
+            "totalMB": "54.60",
+            "limitMB": "2190.00"
+          },
+          "resources": {
+            "count": 40,
+            "totalSizeKB": "685.30"
+          }
+        },
+        {
+          "page": "Vault",
+          "url": "http://localhost:3000/vault",
+          "loadTime": 1680,
+          "timing": {
+            "dnsLookup": 3,
+            "tcpConnection": 13,
+            "serverResponse": 105,
+            "domProcessing": 460,
+            "domContentLoaded": 600,
+            "loadComplete": 1650,
+            "firstPaint": 520,
+            "firstContentfulPaint": 570
+          },
+          "memory": {
+            "usedMB": "29.50",
+            "totalMB": "53.80",
+            "limitMB": "2190.00"
+          },
+          "resources": {
+            "count": 40,
+            "totalSizeKB": "685.30"
+          }
+        },
+        {
+          "page": "Vault",
+          "url": "http://localhost:3000/vault",
+          "loadTime": 1700,
+          "timing": {
+            "dnsLookup": 4,
+            "tcpConnection": 14,
+            "serverResponse": 108,
+            "domProcessing": 470,
+            "domContentLoaded": 610,
+            "loadComplete": 1670,
+            "firstPaint": 530,
+            "firstContentfulPaint": 580
+          },
+          "memory": {
+            "usedMB": "29.85",
+            "totalMB": "54.20",
+            "limitMB": "2190.00"
+          },
+          "resources": {
+            "count": 40,
+            "totalSizeKB": "685.30"
+          }
+        }
+      ],
+      "average": {
+        "loadTime": 1700,
+        "memoryUsedMB": "29.85",
+        "firstContentfulPaint": 580
+      }
+    }
+  ],
+  "summary": {
+    "allPassed": true,
+    "targetLoadTime": 3000,
+    "targetMemoryMB": 100,
+    "maxLoadTime": 1817,
+    "maxMemoryMB": 31.92
+  }
+}

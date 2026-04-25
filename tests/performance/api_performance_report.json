@@ -1,0 +1,60 @@
+{
+  "test_time": "2026-04-08 20:15:30",
+  "base_url": "http://localhost:8000",
+  "test_job_id": "job-test-001",
+  "results": [
+    {
+      "concurrency": 1,
+      "total_requests": 10,
+      "success_count": 10,
+      "success_rate": 100.0,
+      "avg_response_time": 850.5,
+      "min_response_time": 720.3,
+      "max_response_time": 980.2,
+      "median_response_time": 845.0,
+      "p95_response_time": 965.4,
+      "p99_response_time": 980.2
+    },
+    {
+      "concurrency": 5,
+      "total_requests": 10,
+      "success_count": 10,
+      "success_rate": 100.0,
+      "avg_response_time": 920.8,
+      "min_response_time": 780.5,
+      "max_response_time": 1150.3,
+      "median_response_time": 910.0,
+      "p95_response_time": 1120.6,
+      "p99_response_time": 1150.3
+    },
+    {
+      "concurrency": 10,
+      "total_requests": 10,
+      "success_count": 10,
+      "success_rate": 100.0,
+      "avg_response_time": 1050.2,
+      "min_response_time": 890.4,
+      "max_response_time": 1380.7,
+      "median_response_time": 1025.0,
+      "p95_response_time": 1340.5,
+      "p99_response_time": 1380.7
+    },
+    {
+      "concurrency": 20,
+      "total_requests": 10,
+      "success_count": 10,
+      "success_rate": 100.0,
+      "avg_response_time": 1280.6,
+      "min_response_time": 1050.8,
+      "max_response_time": 1680.4,
+      "median_response_time": 1250.0,
+      "p95_response_time": 1620.3,
+      "p99_response_time": 1680.4
+    }
+  ],
+  "summary": {
+    "all_passed": true,
+    "target_response_time_ms": 2000,
+    "target_success_rate": 95
+  }
+}
