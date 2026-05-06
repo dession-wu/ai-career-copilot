@@ -94,3 +94,5 @@ backend/models/
 *.exe
 *.dll
 *.node
+.vercel
+.env*.local
