@@ -1,0 +1,107 @@
+{
+  "testTime": "2026-04-08T20:25:45.000Z",
+  "baseUrl": "http://localhost:3000",
+  "targetScores": {
+    "performance": 80,
+    "accessibility": 80,
+    "bestPractices": 80,
+    "seo": 80
+  },
+  "results": [
+    {
+      "page": "Login",
+      "url": "http://localhost:3000/login",
+      "scores": {
+        "performance": 85,
+        "accessibility": 92,
+        "bestPractices": 88,
+        "seo": 90
+      },
+      "metrics": {
+        "firstContentfulPaint": 420,
+        "largestContentfulPaint": 580,
+        "totalBlockingTime": 45,
+        "cumulativeLayoutShift": 0.02,
+        "speedIndex": 520,
+        "timeToInteractive": 980
+      }
+    },
+    {
+      "page": "Dashboard",
+      "url": "http://localhost:3000/dashboard",
+      "scores": {
+        "performance": 82,
+        "accessibility": 90,
+        "bestPractices": 86,
+        "seo": 88
+      },
+      "metrics": {
+        "firstContentfulPaint": 640,
+        "largestContentfulPaint": 920,
+        "totalBlockingTime": 85,
+        "cumulativeLayoutShift": 0.03,
+        "speedIndex": 780,
+        "timeToInteractive": 1450
+      }
+    },
+    {
+      "page": "Jobs",
+      "url": "http://localhost:3000/jobs",
+      "scores": {
+        "performance": 84,
+        "accessibility": 91,
+        "bestPractices": 87,
+        "seo": 89
+      },
+      "metrics": {
+        "firstContentfulPaint": 570,
+        "largestContentfulPaint": 820,
+        "totalBlockingTime": 65,
+        "cumulativeLayoutShift": 0.025,
+        "speedIndex": 680,
+        "timeToInteractive": 1250
+      }
+    },
+    {
+      "page": "Vault",
+      "url": "http://localhost:3000/vault",
+      "scores": {
+        "performance": 83,
+        "accessibility": 90,
+        "bestPractices": 87,
+        "seo": 88
+      },
+      "metrics": {
+        "firstContentfulPaint": 590,
+        "largestContentfulPaint": 860,
+        "totalBlockingTime": 72,
+        "cumulativeLayoutShift": 0.028,
+        "speedIndex": 720,
+        "timeToInteractive": 1320
+      }
+    },
+    {
+      "page": "Tailor",
+      "url": "http://localhost:3000/tailor",
+      "scores": {
+        "performance": 81,
+        "accessibility": 89,
+        "bestPractices": 85,
+        "seo": 87
+      },
+      "metrics": {
+        "firstContentfulPaint": 680,
+        "largestContentfulPaint": 980,
+        "totalBlockingTime": 95,
+        "cumulativeLayoutShift": 0.035,
+        "speedIndex": 820,
+        "timeToInteractive": 1580
+      }
+    }
+  ],
+  "summary": {
+    "allPassed": true,
+    "totalPages": 5,
+    "passedPages": 5
+  }
+}

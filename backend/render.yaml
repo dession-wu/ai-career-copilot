@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: ai-career-copilot-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: career-copilot-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS_JSON
+        value: '["https://ai-career-copilot.vercel.app"]'
+    healthCheckPath: /health
+
+databases:
+  - name: career-copilot-db
+    plan: free
+    databaseName: career_copilot
+    user: career_copilot

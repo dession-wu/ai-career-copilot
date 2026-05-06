@@ -1,0 +1,16 @@
+{
+  "test_time": "2026-04-08 20:03:50",
+  "test_environment": {
+    "os": "Windows",
+    "backend": "FastAPI (Python 3.11+)",
+    "frontend": "Next.js 14+",
+    "database": "SQLite"
+  },
+  "target_metrics": {
+    "match_analysis_response_time_ms": 2000,
+    "frontend_load_time_ms": 3000,
+    "memory_usage_mb": 100,
+    "lighthouse_score": 80
+  },
+  "results": {}
+}
