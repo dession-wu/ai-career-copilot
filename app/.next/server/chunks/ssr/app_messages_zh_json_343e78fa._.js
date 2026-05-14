@@ -1,0 +1,3 @@
+module.exports=[26817,a=>{a.v({common:{loading:"加载中...",error:"发生错误",save:"保存",cancel:"取消",delete:"删除",edit:"编辑",confirm:"确认",back:"返回"},auth:{loginSuccess:"登录成功",loginFailed:"登录失败",registerSuccess:"注册成功",registerFailed:"注册失败"},nav:{dashboard:"首页",vault:"经历总库",jobs:"投递管理",interview:"面试准备",settings:"设置"},vault:{title:"经历总库",description:"管理您的简历和经历数据",empty:{title:"暂无简历数据",description:"上传简历，系统将自动解析并结构化"}},jobs:{title:"投递管理",empty:"暂无投递记录"}})}];
+
+//# sourceMappingURL=app_messages_zh_json_343e78fa._.js.map

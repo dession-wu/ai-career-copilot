@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 14, "column": 0}, "map": {"version":3,"sources":["file:///E:/Desktop/AI%20Career%20Co-pilot/app/src/app/login/page.tsx"],"sourcesContent":["import { redirect } from \"next/navigation\";\n\nexport default function LoginRedirectPage() {\n  redirect(\"/zh/login\");\n}\n"],"names":[],"mappings":";;;;AAAA;AAAA;;AAEe,SAAS;IACtB,IAAA,iMAAQ,EAAC;AACX"}}]
+}

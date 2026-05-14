@@ -21,7 +21,6 @@
     "lint:app": "cd app && npm run lint"
   },
   "dependencies": {
-    "@next/swc-win32-x64-msvc": "^16.1.7",
     "next": "^16.1.7"
   }
 }

@@ -1,16 +1,17 @@
 {
   "version": 2,
-  "name": "ai-career-copilot",
-  "builds": [
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/next"
-    }
-  ],
+  "buildCommand": "cd frontend && npm install && npm run build",
+  "outputDirectory": "frontend/.next",
+  "framework": "nextjs",
+  "installCommand": "cd frontend && npm install",
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "https://ai-career-copilot-api.onrender.com/api/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "frontend/$1"
+      "dest": "/frontend/$1"
     }
   ],
   "env": {

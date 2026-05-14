@@ -1,0 +1,10 @@
+{
+  "/[locale]/(auth)/login/page": "/[locale]/login",
+  "/[locale]/(auth)/register/page": "/[locale]/register",
+  "/[locale]/(dashboard)/dashboard/page": "/[locale]/dashboard",
+  "/[locale]/(dashboard)/jobs/page": "/[locale]/jobs",
+  "/[locale]/(dashboard)/vault/page": "/[locale]/vault",
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/page": "/"
+}

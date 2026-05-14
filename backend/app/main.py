@@ -12,6 +12,7 @@ from app.paddlex_config import ensure_model_path, PADDLEX_MODEL_PATH
 from app.config import get_settings
 from app.database import init_db
 from app.routers import auth_router, vault_router, jobs_router, interview_router, scoring_router, interview_review_router, analytics_router, ai_analysis_router
+from app.routers.agents import router as agents_router
 
 settings = get_settings()
 
@@ -136,6 +137,7 @@ app.include_router(scoring_router)
 app.include_router(interview_review_router)
 app.include_router(analytics_router)
 app.include_router(ai_analysis_router)
+app.include_router(agents_router)
 
 
 @app.get("/health", tags=["Health"])

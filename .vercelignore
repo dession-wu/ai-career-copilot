@@ -1,0 +1,63 @@
+# 后端文件（部署前端到 Vercel，后端使用 Render）
+backend/
+
+# 大模型文件
+*.pth
+*.onnx
+*.pb
+*.weights
+
+# Node.js 依赖
+node_modules/
+.pnpm-store/
+
+# 构建输出
+.next/
+dist/
+build/
+out/
+
+# 缓存
+.cache/
+*.cache
+
+# 日志
+*.log
+logs/
+
+# 环境文件（Vercel 使用面板配置）
+.env
+.env.local
+.env.*.local
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 测试
+coverage/
+.nyc_output/
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+
+# Claude 相关
+.claude/
+~/.claude/
+
+# 部署相关
+deploy/
+
+# 大文件
+*.exe
+*.dll
+*.wasm
+*.node

@@ -1,0 +1,16 @@
+{
+  "/[locale]/(auth)/login/page": "app/[locale]/(auth)/login/page.js",
+  "/[locale]/(auth)/register/page": "app/[locale]/(auth)/register/page.js",
+  "/[locale]/(dashboard)/analytics/page": "app/[locale]/(dashboard)/analytics/page.js",
+  "/[locale]/(dashboard)/dashboard/page": "app/[locale]/(dashboard)/dashboard/page.js",
+  "/[locale]/(dashboard)/interview/page": "app/[locale]/(dashboard)/interview/page.js",
+  "/[locale]/(dashboard)/jobs/new/page": "app/[locale]/(dashboard)/jobs/new/page.js",
+  "/[locale]/(dashboard)/jobs/page": "app/[locale]/(dashboard)/jobs/page.js",
+  "/[locale]/(dashboard)/settings/notifications/page": "app/[locale]/(dashboard)/settings/notifications/page.js",
+  "/[locale]/(dashboard)/settings/page": "app/[locale]/(dashboard)/settings/page.js",
+  "/[locale]/(dashboard)/settings/profile/page": "app/[locale]/(dashboard)/settings/profile/page.js",
+  "/[locale]/(dashboard)/vault/page": "app/[locale]/(dashboard)/vault/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js"
+}

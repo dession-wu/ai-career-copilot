@@ -1,0 +1,10 @@
+{
+  "/[locale]/(auth)/login/page": "app/[locale]/(auth)/login/page.js",
+  "/[locale]/(auth)/register/page": "app/[locale]/(auth)/register/page.js",
+  "/[locale]/(dashboard)/dashboard/page": "app/[locale]/(dashboard)/dashboard/page.js",
+  "/[locale]/(dashboard)/jobs/page": "app/[locale]/(dashboard)/jobs/page.js",
+  "/[locale]/(dashboard)/vault/page": "app/[locale]/(dashboard)/vault/page.js",
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/page": "app/page.js"
+}

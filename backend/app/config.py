@@ -23,8 +23,13 @@ class Settings(BaseSettings):
     # LLM 配置
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
-    LLM_PROVIDER: str = "openai"  # openai, anthropic
+    DEEPSEEK_API_KEY: str = ""
+    LLM_PROVIDER: str = "openai"  # openai, anthropic, deepseek
     LLM_MODEL: str = "gpt-4o"
+
+    # DeepSeek 配置
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
+    DEEPSEEK_MODEL: str = "deepseek-chat"
 
     # 文件上传配置
     UPLOAD_DIR: str = "./uploads"
