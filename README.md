@@ -31,7 +31,7 @@
 
 > 📹 点击下方图片观看完整功能演示（约48秒）
 
-[![AI Career Co-pilot 功能演示](./demo-output/career-copilot-demo.mp4)](./demo-output/career-copilot-demo.mp4)
+[![AI Career Co-pilot 功能演示](./demo-output/career-copilot-demo-compressed.mp4)](./demo-output/career-copilot-demo-compressed.mp4)
 
 ### 演示内容概览
 
