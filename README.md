@@ -27,6 +27,14 @@
 
 ## 🎬 项目演示
 
+### 功能演示 GIF
+
+<p align="center">
+  <img src="./demo-output/career-copilot-demo.gif" alt="AI Career Co-pilot 功能演示" width="100%">
+</p>
+
+> 💡 上面 GIF 会在 GitHub 主页自动循环播放，无需点击。
+
 ### 功能演示视频
 
 > 📹 点击下方图片观看完整功能演示（约48秒）
