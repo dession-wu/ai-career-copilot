@@ -24,6 +24,8 @@
 
 ---
 
+<img width="1024" height="522" alt="Career Guide" src="https://github.com/user-attachments/assets/ae48e59e-c7d6-46bd-88a9-dfd05d953091" />
+
 ## ✨ 核心功能
 
 | 模块 | 功能描述 | 状态 |
