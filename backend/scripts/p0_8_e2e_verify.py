@@ -4,6 +4,7 @@ P0-8 端到端验证脚本
 """
 import asyncio
 import json
+import logging
 import sys
 from pathlib import Path
 
@@ -13,6 +14,12 @@ try:
     sys.stderr.reconfigure(encoding="utf-8")
 except Exception:
     pass
+
+# 启用 INFO 日志，确保 [P0-10] 监控埋点可见
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -38,7 +45,8 @@ def main():
     print()
 
     svc = get_resume_extraction_service()
-    result = asyncio.run(svc.extract_from_text(text, user_id="p0-8-e2e"))
+    # ★ P0-11: 改用 v2 路径，验证 P0-10 监控埋点生效
+    result = asyncio.run(svc.extract_from_text_v2(text, user_id="p0-8-e2e", use_llm=False))
 
     if not result.get("success"):
         print(f"[NG] Extract failed: {result.get('error')}")
@@ -74,8 +82,9 @@ def main():
     print()
 
     # === 教育经历断言 ===
+    # v2 路径用 "educations"（复数），v1 用 "education"
     print("--- Education ---")
-    edus = data.get("education", [])
+    edus = data.get("educations") or data.get("education") or []
     print(f"  Total: {len(edus)} entries")
     for i, e in enumerate(edus):
         print(

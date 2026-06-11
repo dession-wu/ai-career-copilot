@@ -23,6 +23,8 @@ from .llm_v2_extraction import (
 from .rule_engine import get_rule_engine
 from .layout_analyzer import get_layout_analyzer
 from .pdf_parser import get_pdf_parser
+from .smart_router import get_smart_router
+from .ab_router import get_ab_router  # ★ P0-11 新增：A/B 实验分流 + 监控埋点
 from .models import (
     ResumeData, QualityReport, ResumeDataV2,
     PersonalInfoV2, EducationV2, InternshipV2, WorkV2, ProjectV2,
@@ -31,6 +33,39 @@ from .models import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _emit_extraction_metric(
+    user_id: str,
+    bucket: str,
+    quality_score: float,
+    elapsed_ms: int,
+    degraded: bool,
+    field_count: int,
+):
+    """
+    P0-10 / P2-6 监控埋点：发出提取质量指标
+    生产环境应替换为 Prometheus / Datadog / OSS / StatsD
+    """
+    # ★ P0-11: 改用 A/B 路由（ab_router）替代 smart_router
+    ab = get_ab_router()
+    ab.record_metric(
+        user_id=user_id or "anonymous",
+        experiment_name="resume_extraction_v1",
+        bucket=bucket,
+        metric="extraction_quality_score",
+        value=quality_score,
+        meta={
+            "elapsed_ms": elapsed_ms,
+            "degraded": degraded,
+            "field_count": field_count,
+        },
+    )
+    logger.info(
+        f"[P0-10] extraction_quality_score user={user_id[:8] if user_id else 'anon'} "
+        f"bucket={bucket} score={quality_score:.3f} elapsed_ms={elapsed_ms} "
+        f"degraded={degraded} fields={field_count}"
+    )
 
 
 def _normalize_date(date_str: str) -> str:
@@ -141,6 +176,24 @@ class ResumeExtractionService:
             needs_review = bool(fused.get("needs_review")) or quality["confidence_score"] < 0.7
             fused["needs_review"] = needs_review
 
+            # P0-10 监控埋点
+            try:
+                # ★ P0-11: 改用 A/B 路由分流
+                bucket = get_ab_router().assign_bucket(user_id or "anon", "resume_extraction_v1")
+                field_count = sum(1 for v in (fused.get("personal_info") or {}).values() if v)
+                field_count += len(fused.get("educations") or [])
+                field_count += len(fused.get("work_experiences") or [])
+                _emit_extraction_metric(
+                    user_id=user_id or "anon",
+                    bucket=bucket,
+                    quality_score=quality.get("confidence_score", 0.0),
+                    elapsed_ms=elapsed_ms,
+                    degraded=False,
+                    field_count=field_count,
+                )
+            except Exception as e:
+                logger.warning(f"[P0-10] metric emission failed (non-fatal): {e}")
+
             return {
                 "success": True,
                 "data": fused,
@@ -238,6 +291,23 @@ class ResumeExtractionService:
 
             needs_review = bool(fused.get("needs_review")) or quality["confidence_score"] < 0.7
             fused["needs_review"] = needs_review
+
+            # P0-10 监控埋点（★ P0-11 修复后）
+            try:
+                bucket = get_ab_router().assign_bucket(user_id or "anon", "resume_extraction_v1")
+                field_count = sum(1 for v in (fused.get("personal_info") or {}).values() if v)
+                field_count += len(fused.get("educations") or [])
+                field_count += len(fused.get("work_experiences") or [])
+                _emit_extraction_metric(
+                    user_id=user_id or "anon",
+                    bucket=bucket,
+                    quality_score=quality.get("confidence_score", 0.0),
+                    elapsed_ms=elapsed_ms,
+                    degraded=False,
+                    field_count=field_count,
+                )
+            except Exception as e:
+                logger.warning(f"[P0-10] metric emission failed (non-fatal): {e}")
 
             return {
                 "success": True,
