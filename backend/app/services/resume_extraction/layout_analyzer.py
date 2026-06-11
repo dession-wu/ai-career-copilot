@@ -131,10 +131,12 @@ class LayoutAnalyzer:
             )
             sections.append(section)
         
-        # 如果没有识别到章节，尝试极简格式解析
+        # 如果没有识别到章节，先尝试宽松的 fallback 章节识别，再走极简格式
         if not sections:
-            sections = self._parse_minimal_format(lines)
-        
+            sections = self._fallback_section_detection(text)
+            if not sections:
+                sections = self._parse_minimal_format(lines)
+
         return sections
     
     def _parse_minimal_format(self, lines: List[str]) -> List[Section]:
@@ -191,17 +193,40 @@ class LayoutAnalyzer:
         return sections
     
     def _infer_content_type(self, line: str, line_num: int, all_lines: List[str]) -> Optional[SectionType]:
-        """推断内容类型"""
-        # 教育经历特征
-        if re.search(r'(大学|学院|学校|University|College|本科|硕士|博士|Bachelor|Master|PhD)', line, re.IGNORECASE):
+        """推断内容类型 - 增强版本，解决教育/工作特征重叠问题"""
+        
+        # 定义特征关键词
+        education_keywords = ['大学', '学院', '学校', 'University', 'College', '本科', '硕士', '博士', 'Bachelor', 'Master', 'PhD']
+        work_keywords = ['公司', '集团', 'Corp', 'Inc', 'Ltd', '工程师', '经理', '主管', '总监']
+        # "科技"和"网络"可能同时出现在学校名和公司名中，作为弱特征
+        weak_work_keywords = ['科技', '网络', '软件']
+        
+        has_education = any(kw in line for kw in education_keywords)
+        has_work = any(kw in line for kw in work_keywords)
+        has_weak_work = any(kw in line for kw in weak_work_keywords)
+        
+        # 决策逻辑：教育特征优先于工作特征
+        # 当一行同时包含教育和工作特征时，优先判定为教育经历
+        # 这是因为：学校名称（如"北京科技大学"）包含"科技"，但本质上是教育经历
+        if has_education:
+            # 检查是否是纯学校名称（如"北京科技大学"）
+            # 纯学校名称通常较短（<15字符）且包含"大学/学院/学校"
+            if len(line.strip()) < 20:
+                return SectionType.EDUCATION
+            # 如果同时包含强工作特征（如"公司"），需要进一步判断
+            if has_work:
+                # 如果包含"公司"等强工作特征，判定为工作
+                if any(kw in line for kw in ['公司', '集团', 'Corp', 'Inc', 'Ltd']):
+                    return SectionType.WORK_EXPERIENCE
+            # 否则优先教育
             return SectionType.EDUCATION
         
-        # 工作经历特征
-        if re.search(r'(公司|集团|科技|网络|软件|Corp|Inc|Ltd|工程师|经理|主管|总监)', line, re.IGNORECASE):
+        # 只有工作特征（无教育特征）
+        if has_work or has_weak_work:
             return SectionType.WORK_EXPERIENCE
         
         # 技能特征
-        if re.search(r'(Python|Java|SQL|MySQL|Redis|Docker|Kubernetes|Photoshop|Excel|Word)', line, re.IGNORECASE):
+        if re.search(r'(Python|Java|SQL|MySQL|Redis|Docker|Kubernetes|Photoshop|Excel|Word|OpenClaw|ClaudeCode|MATLAB|Tableau|ArcGIS)', line, re.IGNORECASE):
             return SectionType.SKILLS
         
         # 项目经历特征
@@ -215,7 +240,7 @@ class LayoutAnalyzer:
                 prev_line = all_lines[line_num - 1].strip()
                 if re.search(r'(大学|学院|学校)', prev_line):
                     return SectionType.EDUCATION
-                elif re.search(r'(公司|集团|科技)', prev_line):
+                elif re.search(r'(公司|集团)', prev_line):
                     return SectionType.WORK_EXPERIENCE
         
         return None
@@ -235,59 +260,129 @@ class LayoutAnalyzer:
         return titles.get(section_type, "其他")
     
     def _is_valid_section_header(self, line: str, section_type: SectionType) -> bool:
-        """验证是否为有效的章节标题 - 增强版本"""
+        """
+        验证是否为有效的章节标题 — P0-4 加固版
+        - 放宽长度限制（带空格标题可能较长）
+        - 允许带"·"或全角分隔符
+        - 教育章节明确允许"教育/学历"关键词
+        """
         line_stripped = line.strip()
-        
-        # 章节标题通常较短（但考虑带空格的情况）
-        if len(line_stripped) > 60:
+
+        if not line_stripped:
             return False
-        
-        # 移除空格后检查长度
-        line_no_space = line_stripped.replace(' ', '')
-        if len(line_no_space) < 2 or len(line_no_space) > 20:
+
+        # 1. 长度检查：放宽到 80 字符
+        if len(line_stripped) > 80:
             return False
-        
-        # 不应包含明显的非标题特征
+
+        # 2. 去空格（含全角空格）后检查长度：2-25 字符
+        line_no_space = line_stripped.replace(' ', '').replace('\u3000', '')
+        if len(line_no_space) < 2 or len(line_no_space) > 25:
+            return False
+
+        # 3. 排除明显的非标题特征
         excluded_patterns = [
             r'\d{4}[\.\-/年]',  # 日期
             r'@',  # 邮箱
             r'1[3-9]\d{9}',  # 手机号
-            r'http',  # URL
-            r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',  # 邮箱格式
+            r'http[s]?://',  # URL
         ]
-        
         for pattern in excluded_patterns:
             if re.search(pattern, line_stripped):
                 return False
-        
-        # 特定章节的额外验证
+
+        # 4. ★ P0-4 教育章节：放行带教育/学历关键词的标题
         if section_type == SectionType.EDUCATION:
-            # 教育章节标题不应包含学校名称（但允许"教育背景"等）
+            # 含"教育/学历/Education/Academic"等关键词 → 放行（覆盖原"校名拦截"逻辑）
+            edu_header_keywords = ['教育', '学历', 'Education', 'Academic', '学习']
+            if any(kw in line_no_space for kw in edu_header_keywords):
+                return True  # ★ 优先放行
+            # 纯校名（如"北京大学"）不应作为章节标题
             school_keywords = ['大学', '学院', '学校', 'University', 'College']
-            # 如果包含学校关键词且长度超过合理范围，可能是内容而非标题
-            if any(kw in line_no_space for kw in school_keywords):
-                # 检查是否是纯学校名称（如"北京大学"）
-                if len(line_no_space) <= 8 and any(line_no_space.endswith(kw) for kw in school_keywords):
-                    return False
-        
+            if any(line_no_space.endswith(kw) for kw in school_keywords) and len(line_no_space) <= 10:
+                return False
+
+        # 5. 工作章节不应包含公司名（但允许"工作/职业"关键词）
         if section_type == SectionType.WORK_EXPERIENCE:
-            # 工作章节标题不应包含公司名称
+            work_header_keywords = ['工作', '职业', '实习', 'Experience', 'Work', 'Career']
+            if any(kw in line_no_space for kw in work_header_keywords):
+                return True
             company_keywords = ['公司', '集团', 'Corp', 'Inc', 'Ltd', '科技', '网络']
             if any(kw in line_no_space for kw in company_keywords) and len(line_no_space) > 8:
                 return False
-        
+
+        # 6. 项目章节
         if section_type == SectionType.PROJECTS:
-            # 项目章节标题不应包含具体项目名称特征
+            project_header_keywords = ['项目', 'Project', '课题', '研究']
+            if any(kw in line_no_space for kw in project_header_keywords):
+                return True
             project_indicators = ['项目：', '课题：', '《', '》', '负责', '开发']
             if any(ind in line_stripped for ind in project_indicators):
                 return False
-        
-        # 检查是否看起来像标题（通常是大写或首字母大写）
-        # 中文标题通常没有标点符号（除了分隔符）
+
+        # 7. 标点检查：允许"·"或"-"分隔（"教·育·背·景"）
+        # 拦截明显的段落标点
         if re.search(r'[。，、；：！？]', line_stripped):
             return False
-        
+        # 允许 "·" "—" "-" 不在拦截列表
+
         return True
+
+    def _fallback_section_detection(self, text: str) -> List[Section]:
+        """
+        P0-4 新增：无标题简历的 fallback 章节识别
+        当章节识别失败时（如纯文本简历无标题），根据内容特征推断章节
+        """
+        sections = []
+        lines = text.split('\n')
+        current_section: Optional[Section] = None
+        current_content: List[str] = []
+
+        # 宽松的章节标题模式（带可选空格/标点/中英混合）
+        section_patterns = [
+            (r'(?:^|\s)教\s*育\s*(?:背\s*景|经\s*历|情\s*况)|^Education\b|^EDUCATION', SectionType.EDUCATION, "教育背景"),
+            (r'(?:^|\s)工\s*作\s*(?:经\s*历|经\s*验)|^Experience\b|^EXPERIENCE|^Work\s+Experience', SectionType.WORK_EXPERIENCE, "工作经历"),
+            (r'(?:^|\s)项\s*目\s*(?:经\s*历|经\s*验)|^Project\b|^PROJECT', SectionType.PROJECTS, "项目经历"),
+            (r'(?:^|\s)实\s*习|^Internship\b|^INTERNSHIP', SectionType.WORK_EXPERIENCE, "实习经历"),
+            (r'(?:^|\s)(?:专\s*业\s*)?技\s*能|^Skill\b|^SKILL', SectionType.SKILLS, "技能"),
+            (r'(?:^|\s)(?:获\s*得\s*)?证\s*书|^Certification', SectionType.CERTIFICATIONS, "证书"),
+            (r'(?:^|\s)荣\s*誉|^Award\b|^AWARD', SectionType.AWARDS, "荣誉奖项"),
+            (r'(?:^|\s)自\s*我\s*评\s*价|^Summary|^SUMMARY', SectionType.SELF_EVALUATION, "自我评价"),
+            (r'(?:^|\s)语\s*言|^Language', SectionType.LANGUAGES, "语言能力"),
+        ]
+
+        def _flush_current():
+            nonlocal current_section, current_content
+            if current_section and current_content:
+                current_section.content = '\n'.join(current_content).strip()
+                if current_section.content:
+                    sections.append(current_section)
+            current_section = None
+            current_content = []
+
+        for line in lines:
+            line_stripped = line.strip()
+            if not line_stripped:
+                continue
+            matched = False
+            for pattern, section_type, default_title in section_patterns:
+                if re.search(pattern, line_stripped, re.IGNORECASE):
+                    _flush_current()
+                    current_section = Section(
+                        title=default_title,
+                        section_type=section_type,
+                        content="",
+                        start_line=0,
+                        end_line=0,
+                        confidence=0.6,  # fallback 置信度低
+                    )
+                    matched = True
+                    break
+            if not matched and current_section:
+                current_content.append(line_stripped)
+
+        _flush_current()
+        return sections
     
     def _deduplicate_sections(self, positions: List[Dict]) -> List[Dict]:
         """去重相邻的相同类型章节"""
@@ -355,14 +450,21 @@ class LayoutAnalyzer:
         if section_type == SectionType.WORK_EXPERIENCE:
             company_keywords = ['公司', '集团', 'Corp', 'Inc', 'Ltd', '科技', '网络']
             title_keywords = ['工程师', '经理', '主管', '总监', '开发', 'Engineer', 'Manager']
-            
+
             has_company = any(kw in content for kw in company_keywords)
             has_title = any(kw in content for kw in title_keywords)
-            
+            has_date = re.search(r'20\d{2}[\.\-/年]', content) is not None
+
+            # ★ P0-4 修复：日期+学校同时出现 → 修正为教育
+            school_keywords = ['大学', '学院', '学校', 'University', 'College']
+            degree_keywords = ['本科', '硕士', '博士', 'Bachelor', 'Master', 'PhD', '研究生']
+            school_count = sum(1 for kw in school_keywords if kw in content)
+            degree_count = sum(1 for kw in degree_keywords if kw in content)
+            if school_count >= 1 and (has_date or degree_count >= 1):
+                return False, SectionType.EDUCATION  # ★ 修正为教育
+
             if has_company or has_title:
-                # 额外检查：如果内容主要是学校信息，可能是教育经历
-                school_keywords = ['大学', '学院', '本科', '硕士', '博士']
-                school_count = sum(1 for kw in school_keywords if kw in content)
+                # 原有逻辑：school_count >= 2 修正为教育
                 if school_count >= 2:
                     return False, SectionType.EDUCATION
                 return True, None

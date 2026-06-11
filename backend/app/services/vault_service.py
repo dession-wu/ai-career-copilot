@@ -656,85 +656,48 @@ class VaultService:
 
     def extract_structured_data(self, raw_text: str) -> Dict[str, Any]:
         """
-        从原始简历文本提取结构化数据
-        使用新的简历提取服务（增强版）
+        从原始简历文本提取结构化数据 (v2 路径)
+        使用 规则 + LLM 双通道 → result_fusion_v2 → 字段级置信度
         """
-        logger.info(f"Starting structured data extraction with new service, text length: {len(raw_text)} chars")
-        
+        import asyncio
+        from app.services.resume_extraction.resume_extraction_service import extract_resume_text_v2
+        logger.info(f"Starting v2 structured data extraction, text length: {len(raw_text)} chars")
+
         try:
-            # 使用新的提取服务
-            resume_data = extract_resume_from_text(raw_text)
-            
-            # 转换为旧格式以保持兼容性
-            structured_data = {
-                "personal_info": {
-                    "name": resume_data.personal_info.name,
-                    "email": resume_data.personal_info.email,
-                    "phone": resume_data.personal_info.phone,
-                    "linkedin": resume_data.personal_info.linkedin,
-                    "website": resume_data.personal_info.website,
-                },
-                "education": [
-                    {
-                        "school": edu.school,
-                        "degree": edu.degree,
-                        "field": edu.field,
-                        "start_date": edu.start_date,
-                        "end_date": edu.end_date,
-                        "gpa": edu.gpa,
-                    }
-                    for edu in resume_data.education
-                ],
-                "experiences": [
-                    {
-                        "company": work.company,
-                        "title": work.title,
-                        "start_date": work.start_date,
-                        "end_date": work.end_date,
-                        "description": work.description,
-                    }
-                    for work in resume_data.work_experience
-                ],
-                "projects": [
-                    {
-                        "name": proj.name,
-                        "role": proj.role,
-                        "start_date": proj.start_date,
-                        "end_date": proj.end_date,
-                        "description": proj.description,
-                    }
-                    for proj in resume_data.projects
-                ],
-                "skills": [
-                    {
-                        "name": skill.name,
-                        "level": skill.level,
-                        "category": skill.category,
-                    }
-                    for skill in resume_data.skills
-                ],
-                "raw_text_preview": resume_data.raw_text_preview,
-                "extraction_quality": {
-                    "confidence_score": resume_data.metadata.confidence_score,
-                    "completeness_score": resume_data.metadata.completeness_score,
-                    "extraction_time_ms": resume_data.metadata.extraction_time_ms,
-                },
-                "needs_review": resume_data.metadata.confidence_score < 0.7,
-            }
-            
-            logger.info(f"New extraction service complete: name={structured_data['personal_info']['name']}, "
-                       f"education={len(structured_data['education'])}, "
-                       f"experiences={len(structured_data['experiences'])}, "
-                       f"skills={len(structured_data['skills'])}, "
-                       f"confidence={resume_data.metadata.confidence_score:.2f}")
-            
-            return structured_data
-            
+            # 同步调用 v2 异步入口
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            result = loop.run_until_complete(extract_resume_text_v2(raw_text, use_llm=True))
+            data = result.get("data", {})
+
+            # 兜底: 包含 v1 字段名 (frontend 兼容)
+            if "personal_info" in data and isinstance(data["personal_info"], dict):
+                pi = data["personal_info"]
+                # 复制 education 字段为 educations (兼容)
+                if "education" not in data and "educations" in data:
+                    data["education"] = data["educations"]
+                # 复制 experiences 字段为 work_experiences (兼容)
+                if "experiences" not in data and "work_experiences" in data:
+                    data["experiences"] = data["work_experiences"]
+
+            quality = result.get("quality", {})
+            logger.info(f"v2 extraction complete: name={data.get('personal_info', {}).get('name')}, "
+                       f"education={len(data.get('educations', []))}, "
+                       f"work={len(data.get('work_experiences', []))}, "
+                       f"projects={len(data.get('projects', []))}, "
+                       f"skills={len(data.get('skills', []))}, "
+                       f"conf={quality.get('confidence_score', 0):.2f}")
+
+            return data
+
         except Exception as e:
-            logger.error(f"New extraction service failed: {e}, falling back to legacy method")
-            # 如果新服务失败，回退到旧方法
+            # P0-3: 异常时降级到 _extract_structured_data_legacy（规则引擎），不再返回空 dict
+            logger.warning(f"v2 extraction failed, fallback to legacy rule engine: {e}", exc_info=True)
             return self._extract_structured_data_legacy(raw_text)
-    
+
     def _extract_structured_data_legacy(self, raw_text: str) -> Dict[str, Any]:
         """
         旧的结构化数据提取方法（作为备用）
@@ -892,9 +855,13 @@ class VaultService:
     def update_vault(self, vault: CareerVault, vault_data: CareerVaultUpdate) -> CareerVault:
         """更新 Career Vault"""
         if vault_data.structured_data is not None:
-            vault.structured_data = vault_data.structured_data
-            vault.version += 1
-            vault.updated_at = datetime.utcnow()
+            import json
+            old_data = json.dumps(vault.structured_data, sort_keys=True, ensure_ascii=False) if vault.structured_data else ""
+            new_data = json.dumps(vault_data.structured_data, sort_keys=True, ensure_ascii=False)
+            if old_data != new_data:
+                vault.structured_data = vault_data.structured_data
+                vault.version += 1
+                vault.updated_at = datetime.utcnow()
         self.db.commit()
         self.db.refresh(vault)
         return vault
