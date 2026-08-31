@@ -1,8 +1,10 @@
 import json
+import os
 import re
 import logging
 import math
 from typing import Dict, List, Any, Optional
+from urllib.parse import urlparse
 from datetime import datetime
 from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
@@ -11,6 +13,49 @@ from app.config import get_settings
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
+
+
+_KEYWORD_PATTERN_CACHE: Dict[str, "re.Pattern"] = {}
+
+
+def _build_keyword_pattern(keyword: str) -> "re.Pattern":
+    """
+    构建关键词的词边界正则（防止子串误匹配）。
+
+    规则：
+    - 关键词首/尾为 ASCII 字母数字时，要求边界外不是字母数字
+    - 超短关键词（长度<=2，如 "C"/"R"/"Go"）额外排除紧邻的 + # & . 等符号，
+      避免 "C++" 命中 "C"、"R&D" 命中 "R"
+    - 中文关键词保持原子串语义
+    """
+    kw = keyword.strip()
+    escaped = re.escape(kw)
+    if kw:
+        first, last = kw[0], kw[-1]
+        short = len(kw) <= 2
+        if first.isascii() and first.isalnum():
+            left = r'(?<![A-Za-z0-9+#&.])' if short else r'(?<![A-Za-z0-9])'
+            escaped = left + escaped
+        if last.isascii() and last.isalnum():
+            right = r'(?![A-Za-z0-9+#&])' if short else r'(?![A-Za-z0-9])'
+            escaped = escaped + right
+    return re.compile(escaped, re.IGNORECASE)
+
+
+def _get_keyword_pattern(keyword: str) -> "re.Pattern":
+    """获取（并缓存）关键词的词边界正则"""
+    pat = _KEYWORD_PATTERN_CACHE.get(keyword)
+    if pat is None:
+        pat = _build_keyword_pattern(keyword)
+        _KEYWORD_PATTERN_CACHE[keyword] = pat
+    return pat
+
+
+def _keyword_in_text(keyword: str, text: str) -> bool:
+    """词边界判断关键词是否出现在文本中（大小写不敏感）"""
+    if not text:
+        return False
+    return _get_keyword_pattern(keyword).search(text) is not None
 
 
 @dataclass
@@ -535,6 +580,61 @@ def normalize_keyword(keyword: str) -> str:
     return keyword
 
 
+
+class LLMConfigError(ValueError):
+    """LLM 配置校验失败（如 base_url 不在白名单内）"""
+
+
+# LLM base_url 域名白名单（防止用户透传 base_url 导致简历 PII 发往任意地址）
+# 可通过环境变量 LLM_ALLOWED_BASE_URLS（逗号分隔域名）覆盖；设置为 * 可关闭白名单校验（仅限本地开发）
+DEFAULT_LLM_ALLOWED_DOMAINS = [
+    "openai.com",
+    "dashscope.aliyuncs.com",
+    "bigmodel.cn",
+    "moonshot.cn",
+    "deepseek.com",
+    "anthropic.com",
+]
+
+
+def _get_allowed_llm_domains() -> List[str]:
+    """读取 LLM base_url 白名单配置；返回 ["*"] 表示关闭校验"""
+    raw = os.environ.get("LLM_ALLOWED_BASE_URLS", "")
+    if raw.strip() == "*":
+        return ["*"]
+    if raw.strip():
+        return [d.strip().lower() for d in raw.split(",") if d.strip()]
+    return DEFAULT_LLM_ALLOWED_DOMAINS
+
+
+def validate_llm_base_url(base_url: str) -> None:
+    """
+    校验外部传入的 LLM base_url 是否指向白名单内域名。
+
+    校验失败抛出 LLMConfigError（错误信息不含 api_key，可安全返回给调用方）。
+    """
+    if not base_url:
+        return
+
+    allowed = _get_allowed_llm_domains()
+    if "*" in allowed:
+        return
+
+    try:
+        host = (urlparse(str(base_url)).hostname or "").lower()
+    except ValueError:
+        host = ""
+
+    if not host:
+        raise LLMConfigError("LLM base_url 格式无效，请检查后重试")
+
+    if not any(host == d or host.endswith("." + d) for d in allowed):
+        raise LLMConfigError(
+            f"LLM base_url 域名 '{host}' 不在允许列表内，"
+            f"允许的域名: {', '.join(allowed)}"
+        )
+
+
 class LLMService:
     def __init__(self, db: Session = None):
         self.db = db
@@ -641,7 +741,6 @@ class LLMService:
         Returns:
             str: 岗位类型标识符
         """
-        jd_text_lower = jd_text.lower()
         scores = {}
 
         for job_type, config in self.DYNAMIC_WEIGHT_CONFIGS.items():
@@ -650,7 +749,7 @@ class LLMService:
 
             score = 0
             for keyword in config["keywords"]:
-                if keyword.lower() in jd_text_lower:
+                if _keyword_in_text(keyword, jd_text):
                     score += 1
             scores[job_type] = score
 
@@ -687,6 +786,14 @@ class LLMService:
         if not api_key:
             return None
 
+        # 安全校验：base_url 必须命中白名单，防止简历等 PII 数据被发往任意地址
+        # 校验失败抛出 LLMConfigError，由路由层转换为 400 返回（日志与错误信息均不含 api_key）
+        try:
+            validate_llm_base_url(base_url)
+        except LLMConfigError as e:
+            logger.error(f"LLM base_url rejected by whitelist: {e}")
+            raise
+
         try:
             from langchain_openai import ChatOpenAI
 
@@ -701,6 +808,60 @@ class LLMService:
             logger.error(f"Failed to initialize LLM client: {e}")
             return None
 
+    async def generate_json(
+        self,
+        prompt: str,
+        llm_config: Optional[Dict[str, Any]] = None
+    ) -> Optional[Dict[str, Any]]:
+        """调用 LLM 生成并解析 JSON 结果（复盘分析等服务使用）"""
+        llm_client = self._get_llm_client(llm_config)
+
+        if not llm_client and not llm_config:
+            # 未传入外部配置时，使用服务端默认配置兜底（官方默认地址，域名安全）
+            if not settings.OPENAI_API_KEY:
+                logger.error("generate_json: no llm_config and settings.OPENAI_API_KEY is empty")
+                return None
+            try:
+                from langchain_openai import ChatOpenAI
+
+                llm_client = ChatOpenAI(
+                    model=settings.LLM_MODEL,
+                    api_key=settings.OPENAI_API_KEY,
+                    temperature=0.7,
+                )
+            except Exception as e:
+                logger.error(f"Failed to initialize default LLM client: {e}")
+                return None
+
+        if not llm_client:
+            return None
+
+        from langchain_core.messages import HumanMessage, SystemMessage
+
+        messages = [
+            SystemMessage(content="你是数据分析助手，只输出严格合法的 JSON，不要任何解释性文字或 Markdown 代码围栏。"),
+            HumanMessage(content=prompt),
+        ]
+
+        try:
+            response = llm_client.invoke(messages)
+            content = response.content if isinstance(response.content, str) else str(response.content)
+            content = content.strip()
+
+            # 清理模型可能输出的 Markdown 代码围栏
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.startswith("```"):
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+
+            result = json.loads(content.strip())
+            return result
+        except Exception as e:
+            logger.error(f"generate_json failed: {e}")
+            return None
+
     def _extract_keywords(self, text: str) -> List[str]:
         """
         基础 NLP：从文本中提取关键词（使用扩展关键词库）
@@ -708,12 +869,10 @@ class LLMService:
         使用全局 ALL_KEYWORDS 列表进行匹配，支持 500+ 技术关键词
         """
         found_keywords = set()
-        text_upper = text.upper()
 
-        # 使用扩展的关键词库进行匹配
+        # 使用扩展的关键词库进行词边界匹配（不区分大小写，防止子串误匹配）
         for keyword in ALL_KEYWORDS:
-            # 简单的子串匹配（不区分大小写）
-            if keyword.upper() in text_upper:
+            if _keyword_in_text(keyword, text):
                 found_keywords.add(keyword)
 
         return list(found_keywords)
@@ -730,18 +889,17 @@ class LLMService:
                 "category_scores": Dict[str, float]  # 各类别得分
             }
         """
-        text_upper = text.upper()
         found_keywords = []
         by_category = {}
         category_scores = {}
 
-        # 按类别提取关键词
+        # 按类别提取关键词（词边界匹配，防止子串误匹配）
         for category_name, category_data in KEYWORD_CATEGORIES.items():
             category_keywords = []
             weight = category_data["weight"]
 
             for keyword in category_data["keywords"]:
-                if keyword.upper() in text_upper:
+                if _keyword_in_text(keyword, text):
                     category_keywords.append(keyword)
                     found_keywords.append(keyword)
 
@@ -1374,6 +1532,11 @@ class LLMService:
         if current_section and len(current_section) >= 2:
             matched_sections.append('\n'.join(current_section))
 
+        sections_md = chr(10).join(
+            '---' + chr(10) + '**匹配段落 ' + str(i + 1) + '：**' + chr(10) + '```' + chr(10) + section + chr(10) + '```'
+            for i, section in enumerate(matched_sections[:5])
+        )
+
         # 生成报告
         report = f"""# 简历定制报告（基础模式）
 
@@ -1388,7 +1551,7 @@ class LLMService:
 
 以下段落包含与 JD 匹配的关键词：
 
-{chr(10).join(['---\n**匹配段落 ' + str(i+1) + '：**\n```\n' + section + '\n```' for i, section in enumerate(matched_sections[:5])])}
+        {sections_md}
 
 ## 优化建议
 

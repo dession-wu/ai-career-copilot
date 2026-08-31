@@ -46,8 +46,10 @@ class ImageOCRParser(FileParser):
                 import os
                 from pathlib import Path
                 
-                # 模型目录已在文件顶部设置环境变量
-                model_dir = r"D:\AI-Career-Co-pilot\models\easyocr"
+                # 模型目录：优先读环境变量 EASYOCR_MODEL_DIR，否则用项目根目录下 models/easyocr
+                model_dir = os.environ.get("EASYOCR_MODEL_DIR") or str(
+                    Path(__file__).resolve().parents[4] / "models" / "easyocr"
+                )
                 os.makedirs(model_dir, exist_ok=True)
                 
                 # 使用EasyOCR，支持中文和英文

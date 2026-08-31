@@ -1,0 +1,78 @@
+# AI Career Co-pilot 容器编排
+# 用法：cp .env.example .env && docker compose up -d --build
+# 访问：http://localhost:8082
+
+services:
+  frontend:
+    build:
+      # 构建上下文为项目根（monorepo 需访问 shared/）
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # 空串 = 同源相对路径，浏览器请求 /api/* 由 nginx 反代到 backend
+        NEXT_PUBLIC_API_URL: ""
+    ports:
+      - "8082:80"  # 宿主 8082 → 容器 80（唯一对外端口）
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q --spider http://127.0.0.1/ || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      # 必填：JWT 密钥（在 .env 中设置）
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required, set it in .env}
+      # 生产用 PostgreSQL（lifespan 中 init_db 自动建表）
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/career_copilot
+      # 前端同源访问，无需 CORS；保留空数组走默认即可
+      CORS_ORIGINS_JSON: '["http://localhost:8082"]'
+      # LLM 配置（在 .env 中设置）
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o}
+      # 上传目录指向卷挂载点
+      UPLOAD_DIR: /app/backend/uploads
+      # OCR 模型目录指向卷挂载点（首次可离线下载后放入卷）
+      EASYOCR_MODEL_DIR: /app/models/easyocr
+      PADDLEX_MODEL_DIR: /app/models/paddlex
+      # PDF 服务（可选：如部署 pdf-service 可改为 http://pdf-service:3002）
+      PDF_SERVICE_URL: ${PDF_SERVICE_URL:-http://localhost:3002}
+    volumes:
+      - uploads_data:/app/backend/uploads
+      - models_data:/app/models
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: career_copilot
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d career_copilot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  uploads_data:
+  models_data:

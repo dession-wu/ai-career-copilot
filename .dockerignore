@@ -1,0 +1,64 @@
+# 通用版本控制
+.git
+.gitignore
+
+# 环境变量（构建时通过 ARG / compose 注入，不进镜像）
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+backend/.venv/
+backend/.coverage
+backend/alembic/versions/*.pyc
+
+# 数据库与本地数据（镜像内不应包含本地脏数据）
+backend/*.db
+backend/*.db.*
+backend/career_copilot.db
+backend/uploads/
+*.sqlite3
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+*.log
+
+# 模型大文件（EasyOCR / PaddleX 模型运行时挂载，不进镜像）
+models/
+*.onnx
+*.pdmodel
+*.pdiparams
+
+# 测试与临时文件（镜像无需）
+test_screenshots/
+test_*.py
+*/test_*.py
+backend/tests/
+tests/
+*.bak
+test_output/
+
+# 文档与报告（镜像无需）
+*.md
+!frontend/README.md
+!backend/README.md
+docs/
+
+# 打包产物与本地脚本（镜像无需）
+*.tgz
+react-ui.js
+start_all_local.sh
+vercel.json
+generate_test_token.py
+download_easyocr_models.py
+competitor-positioning-map.png
+package-lock.json

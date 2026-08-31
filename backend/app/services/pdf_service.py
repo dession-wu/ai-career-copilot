@@ -96,19 +96,100 @@ class PDFService:
             Dict: 包含PDF路径、文件名、生成时间等信息
         """
         try:
-            # 尝试使用 WeasyPrint
-            return self._generate_with_weasyprint(
+            # 优先通过 HTTP 调用独立 pdf-service（默认 http://localhost:3002）
+            return self._generate_with_pdf_service(
                 resume_content, template, output_path, metadata
             )
-        except ImportError:
-            logger.warning("WeasyPrint not available, trying Playwright")
+        except Exception as e:
+            logger.warning("pdf-service unavailable (%s), trying WeasyPrint", e)
             try:
-                return self._generate_with_playwright(
+                # 尝试使用 WeasyPrint
+                return self._generate_with_weasyprint(
                     resume_content, template, output_path, metadata
                 )
             except ImportError:
-                logger.error("No PDF generation library available")
-                return self._generate_fallback(resume_content, output_path)
+                logger.warning("WeasyPrint not available, trying Playwright")
+                try:
+                    return self._generate_with_playwright(
+                        resume_content, template, output_path, metadata
+                    )
+                except ImportError:
+                    logger.error("No PDF generation library available")
+                    return self._generate_fallback(resume_content, output_path)
+
+    def _generate_with_pdf_service(
+        self,
+        resume_content: str,
+        template: str,
+        output_path: Optional[str],
+        metadata: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """通过 HTTP 调用独立 pdf-service 生成 PDF（首选方案）"""
+        import requests
+        import markdown as md_lib
+
+        from app.config import get_settings
+        settings = get_settings()
+        service_url = (os.getenv("PDF_SERVICE_URL") or settings.PDF_SERVICE_URL).rstrip("/")
+        timeout = float(os.getenv("PDF_SERVICE_TIMEOUT") or settings.PDF_SERVICE_TIMEOUT)
+
+        # backend 模板名映射到 pdf-service 主题
+        theme_map = {
+            "modern": "modern",
+            "classic": "professional",
+            "creative": "creative"
+        }
+        theme = theme_map.get(template, "default")
+
+        # 转换 Markdown 为 HTML 片段（pdf-service 会套用自身主题模板渲染）
+        html_content = md_lib.markdown(
+            resume_content,
+            extensions=['tables', 'fenced_code', 'toc']
+        )
+
+        # 生成输出路径
+        if not output_path:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"resume_{timestamp}.pdf"
+            output_path = str(self.templates_dir / filename)
+
+        filename = os.path.basename(output_path) or "resume.pdf"
+        if not filename.lower().endswith(".pdf"):
+            filename += ".pdf"
+
+        resp = requests.post(
+            f"{service_url}/export/pdf",
+            json={
+                "html": html_content,
+                "theme": theme,
+                "customCSS": "",
+                "filename": filename
+            },
+            timeout=timeout
+        )
+        resp.raise_for_status()
+
+        content_type = (resp.headers.get("Content-Type") or "").lower()
+        if "application/pdf" not in content_type:
+            raise RuntimeError(
+                f"pdf-service returned unexpected Content-Type: {content_type}"
+            )
+
+        pdf_bytes = resp.content
+        if not pdf_bytes.startswith(b"%PDF"):
+            raise RuntimeError("pdf-service response is not a valid PDF document")
+
+        with open(output_path, "wb") as f:
+            f.write(pdf_bytes)
+
+        return {
+            "success": True,
+            "file_path": output_path,
+            "filename": filename,
+            "template": template,
+            "generated_at": datetime.utcnow().isoformat(),
+            "method": "pdf_service"
+        }
     
     def _generate_with_weasyprint(
         self,

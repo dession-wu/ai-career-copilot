@@ -28,7 +28,7 @@ from app.schemas.job import (
     ProvenanceItem,
 )
 from app.services.job_service import JobService
-from app.services.llm_service import LLMService
+from app.services.llm_service import LLMService, LLMConfigError, validate_llm_base_url, _keyword_in_text
 from app.services.vault_service import VaultService
 from app.services.pdf_service import get_pdf_service
 from app.services.job_extraction import JobExtractionService, JobExtractionRequest
@@ -361,11 +361,18 @@ def tailor_resume(
         )
 
     # 调用 LLM 服务生成定制简历（带防幻觉校验）
-    result = llm_service.tailor_resume(
-        vault.structured_data,
-        job.jd_text,
-        llm_config
-    )
+    try:
+        result = llm_service.tailor_resume(
+            vault.structured_data,
+            job.jd_text,
+            llm_config
+        )
+    except LLMConfigError as e:
+        # base_url 未通过白名单校验：返回 400，错误信息不含 api_key
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
     # 提取简历内容
     tailored_content = result["resume"]
@@ -428,6 +435,16 @@ async def tailor_resume_stream(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请先上传简历到 Career Vault"
         )
+
+    # 安全校验：进入 SSE 流之前先校验 base_url 白名单（一旦开始流式返回将无法再返回 400）
+    if llm_config:
+        try:
+            validate_llm_base_url(llm_config.get("base_url"))
+        except LLMConfigError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
 
     async def event_generator() -> AsyncGenerator[str, None]:
         """SSE 事件生成器"""
@@ -1218,7 +1235,7 @@ def get_workflow_details(
         for skill, mapping in skill_mapping.items():
             if mapping.get("found_in_resume", False):
                 evidence = mapping.get("evidence", "")
-                if skill.lower() in exp_description.lower() or skill.lower() in exp_title.lower():
+                if _keyword_in_text(skill, exp_description) or _keyword_in_text(skill, exp_title):
                     match_score += 10
                     matched_skills.append(skill)
         

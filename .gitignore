@@ -7,11 +7,15 @@ backend/__pycache__/
 .env
 .env.local
 !.env.example
+frontend/.env.app
+frontend/.env.production
+frontend/.env.local
 
 # Database
 *.db
 *.sqlite
 *.sqlite3
+backend/*.db.bak*
 
 # Uploads
 uploads/
@@ -56,8 +60,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
+
 parts/
 sdist/
 var/
@@ -96,3 +100,4 @@ backend/models/
 *.node
 .vercel
 .env*.local
+node_modules

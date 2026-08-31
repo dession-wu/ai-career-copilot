@@ -4,12 +4,12 @@ const cors = require('cors');
 const helmet = require('helmet');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 
 // 中间件
 app.use(helmet());
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:3002'],
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'],
   methods: ['POST'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -264,48 +264,72 @@ app.post('/export/pdf', async (req, res) => {
     // 生成完整 HTML
     const fullHTML = generateResumeHTML(html, theme, customCSS);
     
-    // 启动 Puppeteer
-    browser = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-accelerated-2d-canvas',
-        '--no-first-run',
-        '--no-zygote',
-        '--single-process',
-        '--disable-gpu'
-      ]
-    });
-    
-    const page = await browser.newPage();
-    
-    // 设置页面内容
-    await page.setContent(fullHTML, {
-      waitUntil: ['networkidle0', 'domcontentloaded']
-    });
-    
-    // 等待字体加载
-    await page.evaluateHandle('document.fonts.ready');
-    
-    // 生成 PDF
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '0',
-        right: '0',
-        bottom: '0',
-        left: '0'
-      },
-      preferCSSPageSize: true,
-      scale: 1.5
-    });
-    
-    // 关闭浏览器
-    await browser.close();
-    browser = null;
+    let pdfBuffer = null;
+    let lastError = null;
+
+    /* headless shell 模式下 Chrome 存在偶发崩溃(Target closed 等)，
+       整体失败时自动重试一次，提升服务可用性 */
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        // 启动 Puppeteer
+        browser = await puppeteer.launch({
+          headless: 'shell',
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--disable-gpu'
+          ]
+        });
+
+        const page = await browser.newPage();
+
+        // 设置页面内容
+        await page.setContent(fullHTML, {
+          waitUntil: 'domcontentloaded'
+        });
+
+        // 等待字体加载（失败不阻断，仅影响字体精细度）
+        try {
+          await page.evaluateHandle('document.fonts.ready');
+        } catch (fontErr) {
+          console.warn('fonts.ready skipped:', fontErr.message);
+        }
+
+        // 生成 PDF
+        pdfBuffer = await page.pdf({
+          format: 'A4',
+          printBackground: true,
+          margin: {
+            top: '0',
+            right: '0',
+            bottom: '0',
+            left: '0'
+          },
+          preferCSSPageSize: true,
+          scale: 1.5
+        });
+
+        // 关闭浏览器
+        await browser.close();
+        browser = null;
+        lastError = null;
+        break;
+      } catch (renderError) {
+        lastError = renderError;
+        console.error(`PDF render attempt ${attempt} failed:`, renderError.message);
+        if (browser) {
+          try { await browser.close(); } catch (e) { /* 忽略关闭异常 */ }
+          browser = null;
+        }
+      }
+    }
+
+    if (!pdfBuffer || !pdfBuffer.length) {
+      throw lastError || new Error('PDF generation produced empty result');
+    }
     
     // 设置响应头
     // 对文件名进行编码，处理中文字符和特殊字符

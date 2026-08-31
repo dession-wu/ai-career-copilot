@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "./uploads"
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
 
+    # PDF 服务配置（可选，指向独立的 pdf-service 服务）
+    PDF_SERVICE_URL: str = "http://localhost:3002"
+    PDF_SERVICE_TIMEOUT: float = 60.0
+
     # CORS 配置 - 支持从环境变量 JSON 字符串解析
     CORS_ORIGINS_JSON: str = ""  # 生产环境使用: '["https://your-app.vercel.app"]'
 
