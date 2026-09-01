@@ -26,6 +26,50 @@
   "dashboard": {
     "welcome": "欢迎回来"
   },
+  "landing": {
+    "nav": {
+      "features": "核心功能",
+      "login": "登录",
+      "start": "免费开始"
+    },
+    "hero": {
+      "badge": "AI 驱动的智能求职副驾",
+      "title1": "让 AI 成为你求职路上的",
+      "title2": "最佳副驾",
+      "subtitle": "从简历解析到面试准备，AI Career Co-pilot 严格基于你的真实经历，提供精准匹配、智能诊断与个性化求职规划，助你高效拿下心仪 Offer。",
+      "ctaPrimary": "免费开始",
+      "ctaSecondary": "了解更多"
+    },
+    "features": {
+      "title": "核心功能",
+      "subtitle": "四大能力，覆盖求职全流程",
+      "resume": {
+        "title": "简历解析",
+        "desc": "上传 PDF / DOCX 简历，AI 自动解析并结构化提取教育经历、技能清单与工作经历，沉淀为你的经历总库。"
+      },
+      "diagnosis": {
+        "title": "智能诊断",
+        "desc": "分析目标岗位 JD，计算 0-100 匹配度评分，精准识别技能差距，明确提升方向。"
+      },
+      "planning": {
+        "title": "求职规划",
+        "desc": "看板式管理求职投递，状态流转全程追踪，求职进程一目了然。"
+      },
+      "interview": {
+        "title": "AI 面试",
+        "desc": "生成针对性面试题，提供 STAR 框架回答建议与考察意图分析，从容应对每一场面试。"
+      }
+    },
+    "cta": {
+      "title": "准备好让 AI 助你一臂之力了吗？",
+      "subtitle": "立即免费注册，开启高效求职之旅",
+      "button": "免费开始"
+    },
+    "footer": {
+      "tagline": "智能求职副驾 · 严格基于事实，绝不凭空捏造",
+      "rights": "保留所有权利"
+    }
+  },
   "vault": {
     "title": "经历总库",
     "description": "管理您的简历和经历数据",

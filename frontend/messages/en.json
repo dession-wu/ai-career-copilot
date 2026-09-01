@@ -26,6 +26,50 @@
   "dashboard": {
     "welcome": "Welcome back"
   },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "login": "Log in",
+      "start": "Get Started"
+    },
+    "hero": {
+      "badge": "AI-Powered Career Co-pilot",
+      "title1": "Let AI Be the",
+      "title2": "Co-pilot of Your Career",
+      "subtitle": "From resume parsing to interview prep, AI Career Co-pilot works strictly with your real experience — precise matching, smart diagnosis and personalized job-hunt planning to help you land the offer.",
+      "ctaPrimary": "Get Started Free",
+      "ctaSecondary": "Learn More"
+    },
+    "features": {
+      "title": "Core Features",
+      "subtitle": "Four capabilities covering the entire job-hunt journey",
+      "resume": {
+        "title": "Resume Parsing",
+        "desc": "Upload a PDF / DOCX resume and AI automatically parses and structures your education, skills and work experience into your career vault."
+      },
+      "diagnosis": {
+        "title": "Smart Diagnosis",
+        "desc": "Analyze target job descriptions, score match level from 0-100, and pinpoint skill gaps to sharpen your edge."
+      },
+      "planning": {
+        "title": "Job Planning",
+        "desc": "Manage applications on a Kanban board with full status tracking — your job-hunt progress at a glance."
+      },
+      "interview": {
+        "title": "AI Interview",
+        "desc": "Generate targeted interview questions with STAR-framework answer suggestions and intent analysis for every interview."
+      }
+    },
+    "cta": {
+      "title": "Ready to let AI power your job hunt?",
+      "subtitle": "Sign up for free and start your efficient job search today",
+      "button": "Get Started Free"
+    },
+    "footer": {
+      "tagline": "Smart Career Co-pilot · Fact-based only, never fabricated",
+      "rights": "All rights reserved"
+    }
+  },
   "vault": {
     "title": "Career Vault",
     "description": "Manage your resume and experience data",

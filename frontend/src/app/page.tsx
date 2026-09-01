@@ -8,7 +8,8 @@ export default function RootPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace("/zh/dashboard");
+    // 改为指向落地页（[locale]/page.tsx），未登录用户不再被直接送进 dashboard
+    router.replace("/zh");
   }, [router]);
 
   return null;
