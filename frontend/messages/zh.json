@@ -28,21 +28,50 @@
   },
   "landing": {
     "nav": {
+      "method": "求职路径",
       "features": "核心功能",
       "login": "登录",
       "start": "免费开始"
     },
     "hero": {
-      "badge": "AI 驱动的智能求职副驾",
-      "title1": "让 AI 成为你求职路上的",
-      "title2": "最佳副驾",
-      "subtitle": "从简历解析到面试准备，AI Career Co-pilot 严格基于你的真实经历，提供精准匹配、智能诊断与个性化求职规划，助你高效拿下心仪 Offer。",
-      "ctaPrimary": "免费开始",
-      "ctaSecondary": "了解更多"
+      "badge": "AI 驱动的求职信号台",
+      "title1": "看清下一步，",
+      "title2": "再向理想工作靠近",
+      "subtitle": "把真实经历、目标岗位和每一次投递放在同一条清晰路径上。AI 帮你识别匹配度与差距，给出能立即执行的下一步。",
+      "ctaPrimary": "开始建立我的路径",
+      "ctaSecondary": "看看如何工作",
+      "proof": "严格基于你的真实经历，不凭空编造",
+      "boardLabel": "CAREER SIGNAL BOARD",
+      "boardStatus": "分析中",
+      "profileName": "你的职业档案",
+      "profileRole": "产品设计师 · 3 年经验",
+      "matchLabel": "当前岗位匹配度",
+      "targetLabel": "目标岗位",
+      "targetStatus": "适合推进",
+      "targetRole": "高级产品设计师",
+      "targetCompany": "Consumer Platform / 上海",
+      "gapLabel": "最值得补强：",
+      "gapValue": "数据分析",
+      "updated": "刚刚更新",
+      "viewReport": "查看诊断"
+    },
+    "method": {
+      "kicker": "从经历到机会",
+      "title": "求职不该靠猜，",
+      "titleAccent": "每一步都应该有依据。",
+      "subtitle": "把复杂的求职过程拆成四个可以执行的动作，让你知道现在在哪里，下一步做什么。"
+    },
+    "steps": {
+      "experience": { "title": "沉淀经历", "desc": "把做过的事整理成可复用的证据。" },
+      "match": { "title": "判断匹配", "desc": "看清岗位要求与你的差距。" },
+      "plan": { "title": "安排推进", "desc": "管理投递，不再遗漏重要节点。" },
+      "interview": { "title": "准备面试", "desc": "围绕真实经历练习关键问题。" }
     },
     "features": {
-      "title": "核心功能",
-      "subtitle": "四大能力，覆盖求职全流程",
+      "kicker": "求职工作台",
+      "title": "让每个机会，",
+      "titleAccent": "都值得认真评估。",
+      "subtitle": "从经历总库到面试准备，所有建议都能追溯到你的真实信息。",
       "resume": {
         "title": "简历解析",
         "desc": "上传 PDF / DOCX 简历，AI 自动解析并结构化提取教育经历、技能清单与工作经历，沉淀为你的经历总库。"
@@ -61,9 +90,10 @@
       }
     },
     "cta": {
-      "title": "准备好让 AI 助你一臂之力了吗？",
-      "subtitle": "立即免费注册，开启高效求职之旅",
-      "button": "免费开始"
+      "title": "下一份工作，",
+      "titleAccent": "从一次清晰判断开始。",
+      "subtitle": "建立你的职业档案，马上获得第一份岗位诊断。",
+      "button": "开始我的求职路径"
     },
     "footer": {
       "tagline": "智能求职副驾 · 严格基于事实，绝不凭空捏造",

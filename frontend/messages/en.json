@@ -28,21 +28,50 @@
   },
   "landing": {
     "nav": {
+      "method": "The Path",
       "features": "Features",
       "login": "Log in",
       "start": "Get Started"
     },
     "hero": {
-      "badge": "AI-Powered Career Co-pilot",
-      "title1": "Let AI Be the",
-      "title2": "Co-pilot of Your Career",
-      "subtitle": "From resume parsing to interview prep, AI Career Co-pilot works strictly with your real experience — precise matching, smart diagnosis and personalized job-hunt planning to help you land the offer.",
-      "ctaPrimary": "Get Started Free",
-      "ctaSecondary": "Learn More"
+      "badge": "AI-POWERED CAREER SIGNALS",
+      "title1": "See your next move,",
+      "title2": "then move with evidence",
+      "subtitle": "Bring your real experience, target roles and applications into one clear path. AI shows the match, the gaps and the next action you can take today.",
+      "ctaPrimary": "Build my career path",
+      "ctaSecondary": "See how it works",
+      "proof": "Grounded in your experience. Never fabricated.",
+      "boardLabel": "CAREER SIGNAL BOARD",
+      "boardStatus": "ANALYZING",
+      "profileName": "Your career profile",
+      "profileRole": "Product Designer · 3 years",
+      "matchLabel": "Current role match",
+      "targetLabel": "TARGET ROLE",
+      "targetStatus": "READY TO PURSUE",
+      "targetRole": "Senior Product Designer",
+      "targetCompany": "Consumer Platform / Shanghai",
+      "gapLabel": "Best next gap to close:",
+      "gapValue": "Data analysis",
+      "updated": "Updated just now",
+      "viewReport": "View diagnosis"
+    },
+    "method": {
+      "kicker": "FROM EXPERIENCE TO OPPORTUNITY",
+      "title": "A job search should not be guesswork,",
+      "titleAccent": "every move needs a reason.",
+      "subtitle": "Turn a complicated job search into four clear actions. Know where you are and what to do next."
+    },
+    "steps": {
+      "experience": { "title": "Capture experience", "desc": "Turn what you have done into reusable evidence." },
+      "match": { "title": "Read the match", "desc": "See where your profile fits and where it needs work." },
+      "plan": { "title": "Plan the move", "desc": "Track applications without losing the important moments." },
+      "interview": { "title": "Prepare with context", "desc": "Practice the questions that connect to your real work." }
     },
     "features": {
-      "title": "Core Features",
-      "subtitle": "Four capabilities covering the entire job-hunt journey",
+      "kicker": "THE CAREER WORKSPACE",
+      "title": "Make every opportunity",
+      "titleAccent": "worth a closer look.",
+      "subtitle": "From your experience vault to interview prep, every recommendation traces back to your real information.",
       "resume": {
         "title": "Resume Parsing",
         "desc": "Upload a PDF / DOCX resume and AI automatically parses and structures your education, skills and work experience into your career vault."
@@ -61,9 +90,10 @@
       }
     },
     "cta": {
-      "title": "Ready to let AI power your job hunt?",
-      "subtitle": "Sign up for free and start your efficient job search today",
-      "button": "Get Started Free"
+      "title": "Your next role",
+      "titleAccent": "starts with a clearer decision.",
+      "subtitle": "Build your career profile and get your first role diagnosis today.",
+      "button": "Build my career path"
     },
     "footer": {
       "tagline": "Smart Career Co-pilot · Fact-based only, never fabricated",

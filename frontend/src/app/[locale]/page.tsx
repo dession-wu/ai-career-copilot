@@ -1,204 +1,65 @@
 'use client';
 
-/**
- * Landing Page（落地页）
- *
- * 纯静态展示页，无业务逻辑：
- * - 结构：Header → Hero（渐变标题 + 双 CTA）→ 核心功能（4 卡片）→ 底部 CTA → Footer
- * - 风格：极简白底 + 轻量科技感（缓慢平移的细网格背景、CSS 渐隐浮现），纯 CSS 实现，零动画库依赖
- * - 配色：主色 #2563EB（蓝）/ 文字 #0F172A / 底色 #F8FAFC，均通过 Tailwind 任意值类内联指定
- * - 响应式：桌面多列 / 移动端单列
- * - i18n：文案全部走 next-intl messages（landing 命名空间），随 [locale] 预渲染
- */
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
-import { FileText, Target, Compass, Mic, ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, FileText, Gauge, Search, Sparkles, Target, TrendingUp } from 'lucide-react';
 
-/** 轻量动效样式：网格平移 + 渐隐浮现，均为纯 CSS 关键帧 */
 const ANIMATION_CSS = `
-  /* 缓慢平移的细网格背景（60s 循环，无感知级轻量动效） */
-  @keyframes landing-grid-pan {
-    from { background-position: 0 0; }
-    to   { background-position: 64px 64px; }
-  }
-  .landing-grid {
-    background-image:
-      linear-gradient(to right, rgba(37, 99, 235, 0.07) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(37, 99, 235, 0.07) 1px, transparent 1px);
-    background-size: 64px 64px;
-    animation: landing-grid-pan 60s linear infinite;
-  }
-  /* 渐隐浮现：向下淡入，配合 animation-delay 实现错落出现 */
-  @keyframes landing-fade-up {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  .landing-fade-up {
-    opacity: 0;
-    animation: landing-fade-up 0.7s ease-out forwards;
-  }
-  /* 动效可关闭：尊重系统级"减少动态效果"偏好 */
-  @media (prefers-reduced-motion: reduce) {
-    .landing-grid { animation: none; }
-    .landing-fade-up { animation: none; opacity: 1; }
-  }
+  :root { --career-ink:#172235; --career-muted:#687487; --career-paper:#f5f8fb; --career-blue:#2968d7; --career-line:rgba(23,34,53,.14); --career-cyan:#b9e4ed; }
+  .career-page { min-height:100vh; color:var(--career-ink); background:var(--career-paper); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  .career-header { background:rgba(245,248,251,.9); border-bottom:1px solid var(--career-line); }
+  .career-header-inner,.career-hero-inner,.career-section-inner,.career-footer { width:min(1180px,calc(100% - 64px)); margin:0 auto; }
+  .career-header-inner { min-height:90px; display:flex; align-items:center; gap:30px; }
+  .career-brand { display:flex; align-items:center; gap:11px; color:var(--career-ink); text-decoration:none; }
+  .career-brand-icon { display:grid; width:33px; height:33px; place-items:center; border:1px solid var(--career-ink); border-radius:50%; color:var(--career-blue); }
+  .career-brand strong,.career-brand small { display:block; }.career-brand strong { font-size:11px; letter-spacing:.13em; }.career-brand small { margin-top:4px; color:var(--career-muted); font-size:8px; letter-spacing:.12em; }
+  .career-nav { display:flex; gap:34px; margin-left:auto; }.career-nav a,.career-header-cta { color:var(--career-muted); font-size:12px; text-decoration:none; transition:color .2s ease; }.career-nav a:hover { color:var(--career-blue); }.career-header-cta { display:inline-flex; align-items:center; gap:9px; color:var(--career-ink); font-weight:700; }.career-header-cta svg { transition:transform .2s ease; }.career-header-cta:hover svg { transform:translateX(4px); }
+  .career-hero { position:relative; overflow:hidden; border-bottom:1px solid var(--career-line); background:#eef4f8; }.career-hero:before { content:""; position:absolute; inset:0; opacity:.5; background-image:linear-gradient(rgba(41,104,215,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(41,104,215,.08) 1px,transparent 1px); background-size:58px 58px; mask-image:linear-gradient(90deg,black,transparent 82%); }.career-hero-inner { min-height:680px; position:relative; display:grid; grid-template-columns:.86fr 1.14fr; align-items:center; gap:8%; padding:82px 0 98px; }.career-eyebrow { display:flex; align-items:center; gap:9px; color:var(--career-blue); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:10px; letter-spacing:.08em; text-transform:uppercase; }.career-eyebrow span { width:7px; height:7px; border-radius:50%; background:var(--career-blue); }.career-hero h1,.career-method h2,.career-feature-heading h2,.career-cta h2 { margin:24px 0 0; font-weight:500; letter-spacing:-.055em; line-height:1.02; }.career-hero h1 { max-width:590px; font-size:clamp(48px,6.4vw,82px); }.career-hero h1 em,.career-method h2 em,.career-feature-heading h2 em,.career-cta h2 em { color:var(--career-blue); font-style:normal; }.career-hero-subtitle { max-width:450px; margin:30px 0 0; color:var(--career-muted); font-size:15px; line-height:1.95; }.career-hero-actions { display:flex; align-items:center; gap:25px; margin-top:35px; }.career-primary { display:inline-flex; align-items:center; gap:20px; min-height:52px; padding:0 20px 0 23px; background:var(--career-blue); color:#fff; font-size:13px; font-weight:700; text-decoration:none; transition:transform .2s ease,background .2s ease; }.career-primary:hover { background:#1f52ae; transform:translateY(-2px); }.career-secondary { display:inline-flex; align-items:center; gap:8px; color:var(--career-ink); font-size:12px; font-weight:600; text-decoration:none; }.career-secondary:hover { color:var(--career-blue); }.career-proof { display:flex; align-items:center; gap:7px; margin-top:26px; color:var(--career-muted); font-size:10px; }.career-proof svg { color:var(--career-blue); }
+  .career-signal-board { position:relative; min-height:425px; padding:19px; border:1px solid var(--career-line); background:rgba(255,255,255,.72); box-shadow:19px 19px 0 rgba(41,104,215,.08); }.career-board-top,.career-board-foot { display:flex; justify-content:space-between; color:var(--career-muted); font-family:ui-monospace,monospace; font-size:9px; letter-spacing:.07em; }.career-status { color:#27836d; }.career-status i { display:inline-block; width:6px; height:6px; margin-right:5px; border-radius:50%; background:#43bf98; }.career-board-content { margin-top:17px; padding:24px; background:#fff; border:1px solid var(--career-line); box-shadow:0 16px 34px rgba(25,57,93,.08); }.career-profile { display:flex; align-items:center; gap:10px; }.career-avatar { display:grid; width:37px; height:37px; place-items:center; border-radius:50%; background:#d7e8ef; color:var(--career-blue); font-family:Georgia,serif; font-size:19px; }.career-profile strong,.career-profile small { display:block; }.career-profile strong { font-size:12px; }.career-profile small { margin-top:3px; color:var(--career-muted); font-size:10px; }.career-profile-menu { margin-left:auto; color:#a4adb9; letter-spacing:2px; }.career-score-row { display:flex; align-items:center; justify-content:space-between; margin-top:32px; padding-bottom:25px; border-bottom:1px solid var(--career-line); }.career-score-row small { display:block; color:var(--career-muted); font-size:10px; }.career-score-row strong { display:block; margin-top:8px; font-size:38px; font-weight:500; letter-spacing:-.05em; }.career-score-row strong span { margin-left:4px; color:var(--career-muted); font-size:14px; font-weight:400; letter-spacing:0; }.career-score-ring { position:relative; width:74px; height:74px; }.career-score-ring svg { width:100%; height:100%; transform:rotate(-90deg); }.career-score-ring circle { fill:none; stroke:#e7edf3; stroke-width:7; }.career-score-ring .career-score-progress { stroke:var(--career-blue); stroke-dasharray:205 245; stroke-linecap:round; }.career-score-ring span { position:absolute; inset:0; display:grid; place-items:center; font-size:15px; font-weight:700; }.career-target { margin-top:23px; padding:16px; background:#f4f8fa; }.career-target-head { display:flex; justify-content:space-between; color:var(--career-muted); font-size:10px; }.career-target-head span { display:flex; align-items:center; gap:6px; }.career-target-head b { color:#27836d; font-weight:600; }.career-target>strong,.career-target>small { display:block; }.career-target>strong { margin-top:16px; font-size:15px; }.career-target>small { margin-top:4px; color:var(--career-muted); font-size:10px; }.career-progress { height:5px; margin-top:17px; overflow:hidden; background:#dfe8ed; }.career-progress span { display:block; width:86%; height:100%; background:var(--career-blue); }.career-target p { margin:10px 0 0; color:var(--career-muted); font-size:9px; }.career-target p em { color:var(--career-blue); font-style:normal; }.career-scan-line { position:absolute; top:0; bottom:0; left:0; width:10%; opacity:.22; background:linear-gradient(90deg,transparent,var(--career-cyan),transparent); pointer-events:none; }.career-board-foot { padding:15px 3px 0; font-size:8px; }.career-board-foot span:last-child { display:flex; align-items:center; gap:6px; color:var(--career-blue); }
+  .career-method,.career-features { border-bottom:1px solid var(--career-line); }.career-section-inner { padding:105px 0 120px; }.career-section-label { color:var(--career-muted); font-family:ui-monospace,monospace; font-size:10px; letter-spacing:.07em; }.career-section-label span { color:var(--career-blue); }.career-section-label p { display:inline; margin-left:12px; }.career-method-intro { display:flex; justify-content:space-between; align-items:end; gap:30px; margin-top:22px; }.career-method h2 { font-size:clamp(39px,4.9vw,66px); }.career-method-intro>p { max-width:300px; margin:0 0 3px; color:var(--career-muted); font-size:13px; line-height:1.8; }.career-step-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; margin-top:67px; border:1px solid var(--career-line); background:var(--career-line); }.career-step { min-height:208px; padding:21px; background:var(--career-paper); }.career-step>div { display:flex; justify-content:space-between; color:var(--career-blue); }.career-step>div span { font-family:ui-monospace,monospace; font-size:10px; }.career-step h3 { margin:53px 0 11px; font-size:17px; font-weight:600; }.career-step p { margin:0; color:var(--career-muted); font-size:11px; line-height:1.75; }
+  .career-features .career-section-inner { padding-bottom:130px; }.career-feature-heading { display:flex; justify-content:space-between; align-items:end; gap:30px; margin-top:22px; }.career-feature-heading h2 { font-size:clamp(39px,4.9vw,66px); }.career-feature-heading>p { max-width:280px; margin:0 0 4px; color:var(--career-muted); font-size:13px; line-height:1.8; }.career-feature-list { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; margin-top:57px; border:1px solid var(--career-line); background:var(--career-line); }.career-feature { position:relative; min-height:260px; padding:22px; background:var(--career-paper); transition:background .25s ease,color .25s ease; }.career-feature:hover { background:var(--career-ink); color:#fff; }.career-feature-num { margin-bottom:51px; color:var(--career-blue); font-family:ui-monospace,monospace; font-size:10px; }.career-feature>svg:not(.career-feature-arrow) { color:var(--career-blue); }.career-feature h3 { max-width:150px; margin:17px 0 11px; font-size:18px; }.career-feature p { margin:0; color:var(--career-muted); font-size:11px; line-height:1.75; }.career-feature:hover p { color:rgba(255,255,255,.65); }.career-feature-arrow { position:absolute; right:21px; bottom:21px; color:var(--career-blue); }
+  .career-cta { background:var(--career-blue); color:#fff; }.career-cta-inner { width:min(1180px,calc(100% - 64px)); margin:0 auto; display:flex; justify-content:space-between; align-items:end; gap:30px; padding:78px 0 87px; }.career-cta .career-section-label { color:rgba(255,255,255,.62); }.career-cta h2 { font-size:clamp(39px,4.9vw,66px); }.career-cta h2 em { color:#b9e4ed; }.career-cta-inner>div:last-child { max-width:250px; }.career-cta-inner>div:last-child>p { color:rgba(255,255,255,.72); font-size:13px; line-height:1.8; }.career-primary-dark { margin-top:20px; background:var(--career-ink); }.career-primary-dark:hover { background:#0d1524; }.career-footer { display:flex; justify-content:space-between; gap:22px; padding:20px 0 26px; color:var(--career-muted); font-family:ui-monospace,monospace; font-size:9px; letter-spacing:.05em; }
+  @media(max-width:900px){.career-hero-inner{grid-template-columns:1fr;gap:54px}.career-hero-copy{max-width:650px}.career-signal-board{max-width:680px;width:100%;margin-left:auto}.career-step-grid,.career-feature-list{grid-template-columns:repeat(2,1fr)}.career-method-intro,.career-feature-heading{display:block}.career-method-intro>p,.career-feature-heading>p{margin-top:24px}.career-cta-inner{display:block}.career-cta-inner>div:last-child{margin-top:35px}}
+  @media(max-width:600px){.career-header-inner,.career-hero-inner,.career-section-inner,.career-footer,.career-cta-inner{width:calc(100% - 34px)}.career-header-inner{min-height:78px}.career-brand strong{font-size:10px}.career-brand small{font-size:7px}.career-nav{display:none}.career-header-cta{margin-left:auto;font-size:11px}.career-hero-inner{min-height:0;padding:63px 0 84px}.career-hero h1{font-size:clamp(46px,14vw,72px)}.career-hero-subtitle{font-size:14px}.career-hero-actions{align-items:flex-start;flex-direction:column;gap:21px}.career-signal-board{min-height:385px;padding:12px}.career-board-content{padding:17px}.career-score-row{margin-top:25px}.career-score-row strong{font-size:31px}.career-score-ring{width:65px;height:65px}.career-target{padding:13px}.career-section-inner{padding:76px 0 88px}.career-method h2,.career-feature-heading h2,.career-cta h2{font-size:37px}.career-step-grid,.career-feature-list{grid-template-columns:1fr;margin-top:40px}.career-step{min-height:180px}.career-step h3{margin-top:39px}.career-feature{min-height:220px}.career-feature-num{margin-bottom:39px}.career-cta-inner{padding:58px 0 68px}.career-footer{flex-wrap:wrap}.career-footer span:nth-child(2){width:100%;order:3}}
+  @media(prefers-reduced-motion:reduce){.career-rise,.career-scan{animation:none}.career-primary,.career-header-cta svg,.career-nav a{transition:none}}
 `;
 
 export default function LandingPage() {
   const t = useTranslations('landing');
-
-  // 四大核心功能卡片（图标 + 文案均来自 messages，便于双语维护）
+  const steps = [
+    [FileText, '01', t('steps.experience.title'), t('steps.experience.desc')],
+    [Search, '02', t('steps.match.title'), t('steps.match.desc')],
+    [TrendingUp, '03', t('steps.plan.title'), t('steps.plan.desc')],
+    [Target, '04', t('steps.interview.title'), t('steps.interview.desc')],
+  ] as const;
   const features = [
-    { icon: FileText, title: t('features.resume.title'), desc: t('features.resume.desc') },
-    { icon: Target, title: t('features.diagnosis.title'), desc: t('features.diagnosis.desc') },
-    { icon: Compass, title: t('features.planning.title'), desc: t('features.planning.desc') },
-    { icon: Mic, title: t('features.interview.title'), desc: t('features.interview.desc') },
-  ];
+    ['resume', FileText], ['diagnosis', Gauge], ['planning', TrendingUp], ['interview', Target],
+  ] as const;
 
-  return (
-    <div className="min-h-screen bg-white text-[#0F172A]">
-      {/* 集中注入本页专用动效样式，不污染全局 */}
-      <style>{ANIMATION_CSS}</style>
+  return <div className="career-page">
+    <style>{ANIMATION_CSS}</style>
+    <header className="career-header">
+      <div className="career-header-inner">
+        <Link href="/" className="career-brand"><span className="career-brand-icon"><Sparkles size={16} /></span><span><strong>CAREER CO-PILOT</strong><small>MAKE YOUR NEXT MOVE CLEAR</small></span></Link>
+        <nav className="career-nav"><a href="#method">{t('nav.method')}</a><a href="#features">{t('nav.features')}</a><Link href="/login">{t('nav.login')}</Link></nav>
+        <Link href="/register" className="career-header-cta">{t('nav.start')} <ArrowRight size={14} /></Link>
+      </div>
+    </header>
 
-      {/* ============ Header ============ */}
-      <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/80 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB] text-white">
-              <Sparkles className="h-4 w-4" />
-            </span>
-            <span className="text-lg font-semibold tracking-tight">AI Career Co-pilot</span>
-          </Link>
-
-          {/* 桌面导航：移动端隐藏（落地页保持极简，不做汉堡菜单） */}
-          <nav className="hidden items-center gap-8 text-sm text-slate-600 sm:flex">
-            <a href="#features" className="transition-colors hover:text-[#2563EB]">
-              {t('nav.features')}
-            </a>
-            <Link href="/login" className="transition-colors hover:text-[#2563EB]">
-              {t('nav.login')}
-            </Link>
-          </nav>
-
-          <Link
-            href="/register"
-            className="rounded-full bg-[#2563EB] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700"
-          >
-            {t('nav.start')}
-          </Link>
+    <main>
+      <section className="career-hero">
+        <div className="career-hero-inner">
+          <div className="career-hero-copy career-rise"><p className="career-eyebrow"><span /> {t('hero.badge')}</p><h1>{t('hero.title1')}<br /><em>{t('hero.title2')}</em></h1><p className="career-hero-subtitle">{t('hero.subtitle')}</p><div className="career-hero-actions"><Link href="/register" className="career-primary">{t('hero.ctaPrimary')} <ArrowRight size={17} /></Link><a href="#method" className="career-secondary">{t('hero.ctaSecondary')} <ChevronDown size={16} /></a></div><p className="career-proof"><Check size={14} /> {t('hero.proof')}</p></div>
+          <div className="career-signal-board career-rise career-rise-delay" aria-label={t('hero.boardLabel')}><div className="career-board-top"><span>{t('hero.boardLabel')}</span><span className="career-status"><i /> {t('hero.boardStatus')}</span></div><div className="career-board-content"><div className="career-profile"><div className="career-avatar">W</div><div><strong>{t('hero.profileName')}</strong><small>{t('hero.profileRole')}</small></div><span className="career-profile-menu">•••</span></div><div className="career-score-row"><div><small>{t('hero.matchLabel')}</small><strong>86<span>/100</span></strong></div><div className="career-score-ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="39" /><circle className="career-score-progress" cx="50" cy="50" r="39" /></svg><span>86</span></div></div><div className="career-target"><div className="career-target-head"><span><Target size={14} /> {t('hero.targetLabel')}</span><b>{t('hero.targetStatus')}</b></div><strong>{t('hero.targetRole')}</strong><small>{t('hero.targetCompany')}</small><div className="career-progress"><span /></div><p>{t('hero.gapLabel')} <em>{t('hero.gapValue')}</em></p></div><div className="career-scan-line career-scan" /></div><div className="career-board-foot"><span>{t('hero.updated')}</span><span>{t('hero.viewReport')} <ArrowRight size={13} /></span></div></div>
         </div>
-      </header>
+      </section>
 
-      <main>
-        {/* ============ Hero ============ */}
-        <section className="relative overflow-hidden bg-[#F8FAFC]">
-          {/* 缓慢平移的细网格背景（径向蒙版使其边缘自然消隐） */}
-          <div
-            className="landing-grid pointer-events-none absolute inset-0"
-            style={{
-              maskImage: 'radial-gradient(ellipse 70% 60% at 50% 40%, black 40%, transparent 100%)',
-              WebkitMaskImage:
-                'radial-gradient(ellipse 70% 60% at 50% 40%, black 40%, transparent 100%)',
-            }}
-          />
+      <section className="career-method" id="method"><div className="career-section-inner"><div className="career-section-label"><span>/ 01</span><p>{t('method.kicker')}</p></div><div className="career-method-intro"><h2>{t('method.title')}<br /><em>{t('method.titleAccent')}</em></h2><p>{t('method.subtitle')}</p></div><div className="career-step-grid">{steps.map(([Icon, number, title, desc]) => <div className="career-step" key={number}><div><span>{number}</span><Icon size={18} /></div><h3>{title}</h3><p>{desc}</p></div>)}</div></div></section>
 
-          <div className="relative mx-auto flex max-w-4xl flex-col items-center px-4 py-24 text-center sm:px-6 sm:py-32">
-            {/* 顶部徽标条 */}
-            <div className="landing-fade-up mb-6 rounded-full border border-blue-100 bg-blue-50 px-4 py-1.5 text-xs font-medium text-[#2563EB] sm:text-sm">
-              {t('hero.badge')}
-            </div>
+      <section className="career-features" id="features"><div className="career-section-inner"><div className="career-section-label"><span>/ 02</span><p>{t('features.kicker')}</p></div><div className="career-feature-heading"><h2>{t('features.title')} <em>{t('features.titleAccent')}</em></h2><p>{t('features.subtitle')}</p></div><div className="career-feature-list">{features.map(([key, Icon], index) => <article className="career-feature" key={key}><div className="career-feature-num">0{index + 1}</div><Icon size={20} /><h3>{t(`features.${key}.title`)}</h3><p>{t(`features.${key}.desc`)}</p><ArrowRight className="career-feature-arrow" size={18} /></article>)}</div></div></section>
 
-            {/* 渐变标题 */}
-            <h1 className="landing-fade-up text-4xl font-bold leading-tight tracking-tight sm:text-5xl md:text-6xl">
-              {t('hero.title1')}
-              <br />
-              <span className="bg-gradient-to-r from-[#2563EB] to-sky-400 bg-clip-text text-transparent">
-                {t('hero.title2')}
-              </span>
-            </h1>
-
-            {/* 副标题 */}
-            <p className="landing-fade-up mt-6 max-w-2xl text-base leading-relaxed text-slate-600 sm:text-lg">
-              {t('hero.subtitle')}
-            </p>
-
-            {/* 双 CTA：免费开始（主）/ 了解更多（次） */}
-            <div className="landing-fade-up mt-10 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
-              <Link
-                href="/register"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#2563EB] px-8 py-3 text-base font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 hover:shadow-xl sm:w-auto"
-              >
-                {t('hero.ctaPrimary')}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <a
-                href="#features"
-                className="inline-flex w-full items-center justify-center rounded-full border border-slate-200 bg-white px-8 py-3 text-base font-semibold text-slate-700 transition-colors hover:border-blue-300 hover:text-[#2563EB] sm:w-auto"
-              >
-                {t('hero.ctaSecondary')}
-              </a>
-            </div>
-          </div>
-        </section>
-
-        {/* ============ 核心功能区：4 张卡片 ============ */}
-        <section id="features" className="mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-24">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="landing-fade-up text-3xl font-bold tracking-tight sm:text-4xl">
-              {t('features.title')}
-            </h2>
-            <p className="landing-fade-up mt-3 text-slate-600">{t('features.subtitle')}</p>
-          </div>
-
-          {/* 移动端单列，sm 起双列，lg 起四列 */}
-          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map((f) => (
-              <div
-                key={f.title}
-                className="landing-fade-up group rounded-2xl border border-slate-100 bg-white p-6 transition-all hover:-translate-y-1 hover:border-blue-200 hover:shadow-lg hover:shadow-blue-600/5"
-              >
-                {/* 图标底座：hover 时主色加深，提供轻量反馈 */}
-                <div className="mb-5 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-[#2563EB] transition-colors group-hover:bg-[#2563EB] group-hover:text-white">
-                  <f.icon className="h-6 w-6" />
-                </div>
-                <h3 className="text-lg font-semibold">{f.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ============ 底部 CTA ============ */}
-        <section className="bg-[#F8FAFC]">
-          <div className="landing-fade-up mx-auto max-w-4xl px-4 py-20 text-center sm:px-6 sm:py-24">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">{t('cta.title')}</h2>
-            <p className="mt-3 text-slate-600">{t('cta.subtitle')}</p>
-            <Link
-              href="/register"
-              className="mt-8 inline-flex items-center justify-center gap-2 rounded-full bg-[#2563EB] px-8 py-3 text-base font-semibold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700"
-            >
-              {t('cta.button')}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </section>
-      </main>
-
-      {/* ============ Footer ============ */}
-      <footer className="border-t border-slate-100 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-8 text-sm text-slate-500 sm:flex-row sm:px-6">
-          <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#2563EB] text-white">
-              <Sparkles className="h-3 w-3" />
-            </span>
-            <span>{t('footer.tagline')}</span>
-          </div>
-          <span>
-            © {new Date().getFullYear()} AI Career Co-pilot · {t('footer.rights')}
-          </span>
-        </div>
-      </footer>
-    </div>
-  );
+      <section className="career-cta"><div className="career-cta-inner"><div><p className="career-section-label"><span>/ NEXT MOVE</span></p><h2>{t('cta.title')}<br /><em>{t('cta.titleAccent')}</em></h2></div><div><p>{t('cta.subtitle')}</p><Link href="/register" className="career-primary career-primary-dark">{t('cta.button')} <ArrowRight size={17} /></Link></div></div></section>
+    </main>
+    <footer className="career-footer"><span>CAREER CO-PILOT</span><span>{t('footer.tagline')}</span><span>© {new Date().getFullYear()}</span></footer>
+  </div>;
 }
