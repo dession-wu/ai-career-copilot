@@ -12,7 +12,9 @@ WORKDIR /app
 
 # 依赖分层：先复制 requirements 再安装，利用缓存
 COPY backend/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir \
+    -i https://mirrors.aliyun.com/pypi/simple/ \
+    -r requirements.txt
 
 # 复制后端源码（tests / .venv / db 文件等由 .dockerignore 排除）
 COPY backend/ ./backend/
