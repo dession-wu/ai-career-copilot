@@ -34,9 +34,17 @@ class OCREngine:
                 import easyocr
                 import os
                 
-                # 设置EasyOCR模型目录到D盘，避免C盘权限问题
-                model_dir = r"D:\AI-Career-Co-pilot\models\easyocr"
-                os.makedirs(model_dir, exist_ok=True)
+                # 模型目录：优先读环境变量 EASYOCR_MODEL_DIR，否则用项目根目录下 models/easyocr
+                model_dir = os.environ.get("EASYOCR_MODEL_DIR") or str(
+                    Path(__file__).resolve().parents[4] / "models" / "easyocr"
+                )
+                try:
+                    os.makedirs(model_dir, exist_ok=True)
+                except OSError as e:
+                    raise RuntimeError(
+                        f"无法创建 EasyOCR 模型目录 {model_dir}：{e}。"
+                        f"请检查目录权限，或通过环境变量 EASYOCR_MODEL_DIR 指定可写目录"
+                    ) from e
                 
                 # 使用EasyOCR，支持中文和英文
                 logger.info(f"初始化EasyOCR，模型目录: {model_dir}")

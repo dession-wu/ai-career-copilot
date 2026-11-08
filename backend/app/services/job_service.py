@@ -46,6 +46,13 @@ class JobService:
 
     def update_match_analysis(self, job: JobApplication, match_score: int, match_analysis: dict) -> JobApplication:
         """更新匹配分析结果"""
+        from app.models.career_vault import CareerVault
+        vault = self.db.query(CareerVault).filter(CareerVault.user_id == job.user_id).first()
+        match_analysis = {
+            **match_analysis,
+            'source_vault_version': vault.version if vault else None,
+            'source_jd_text': job.jd_text,
+        }
         job.match_score = match_score
         job.match_analysis = match_analysis
         self.db.commit()

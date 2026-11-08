@@ -1,0 +1,11 @@
+<view wx:if="{{authenticated}}" class="wrap settings-page">
+ <view class="page-head"><view class="title">个人设置</view><image src="/assets/brand.png" class="header-mark"/></view>
+ <view class="settings-section"><view class="section-head"><view class="heading">模型服务</view><text class="caption">百炼 · 北京</text></view><view class="model-name">qwen3.7-flash</view>
+  <view wx:if="{{modelSettings}}" class="quota-row"><view>免费剩余 <text class="quota-count">{{modelSettings.free_remaining}}</text> 次</view><view>处理中 {{modelSettings.free_reserved}} 次</view></view><view wx:else class="sub">{{busy?'正在读取使用情况…':'使用情况暂未加载'}}</view>
+  <view class="label">个人 API Key</view><input aria-label="个人百炼 API Key" password value="{{modelKey}}" bindinput="modelKeyInput" disabled="{{busy}}" placeholder="输入百炼北京地域的 Key"/><view class="caption">保存时会验证 Key，可能产生少量接口费用。</view>
+  <button bindtap="saveModelKey" loading="{{busy}}" disabled="{{busy || !modelKey}}">保存 Key</button><view class="key-actions"><button class="text-button" bindtap="deleteModelKey" disabled="{{busy}}">删除已保存的 Key</button></view>
+  <button class="text-button disclosure-row" bindtap="toggleModelHelp"><text>额度与使用说明</text><text>{{showModelHelp?'−':'＋'}}</text></button><view wx:if="{{showModelHelp}}" class="model-help"><view>所有 AI 功能共用 3 次免费额度。个人 Key 优先使用，删除 Key 不重置免费额度。</view><view>在百炼控制台选择北京地域创建 Key，并确认余额、按量付费和模型权限。</view><view>401：检查 Key 与地域；403：检查权限；429：检查接口限额。</view></view>
+ </view>
+ <view wx:if="{{error}}" class="error">{{error}}<button class="text-button" bindtap="reload" disabled="{{busy}}">重试</button></view><view wx:if="{{message}}" class="notice green">{{message}}</view>
+ <view class="account-options"><button class="account-row" bindtap="togglePrivacy">隐私与资料说明<text>{{showPrivacy?'−':'＋'}}</text></button><view wx:if="{{showPrivacy}}" class="privacy-note"><view>简历、岗位和保存版本关联当前账户。</view><view>可在经历档案的“管理简历”中删除经历，在岗位编辑页删除岗位及关联简历。</view><view>退出登录会清除本机登录状态和未保存编辑，已保存资料会保留。</view></view><button class="account-row danger" bindtap="logout">退出登录<text>↗</text></button></view>
+</view>

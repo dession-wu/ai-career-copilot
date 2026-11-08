@@ -1,3 +1,4 @@
+from app.personal_model import mark_failed
 import json
 import hashlib
 import logging
@@ -58,19 +59,8 @@ class ResumeScoringEngine:
 
     def _get_llm_client(self, llm_config: Optional[Dict[str, Any]] = None):
         """获取 LLM 客户端"""
-        if self._llm_client:
-            return self._llm_client
-
-        if not llm_config:
-            # 使用系统默认配置
-            api_key = settings.OPENAI_API_KEY
-            model = settings.LLM_MODEL
-            if not api_key:
-                return None
-            llm_config = {
-                "api_key": api_key,
-                "model": model,
-            }
+        from app.personal_model import llm_options, TrackedClient
+        llm_config = llm_options()
 
         api_key = llm_config.get("api_key")
         model = llm_config.get("model", "gpt-4o")
@@ -84,12 +74,17 @@ class ResumeScoringEngine:
             client = ChatOpenAI(
                 model=model,
                 api_key=api_key,
+                base_url=llm_config['base_url'],
+                extra_body={"enable_thinking": False} if llm_config["model"] == "qwen3.7-flash" else {},
+                timeout=90,
+                max_retries=1,
                 temperature=0.3,  # 评分任务需要更确定性的输出
                 max_tokens=2000,
             )
             self._llm_client = client
-            return client
+            return TrackedClient(client)
         except Exception as e:
+            mark_failed()
             logger.error(f"Failed to initialize LLM client: {e}")
             return None
 
@@ -227,6 +222,7 @@ class ResumeScoringEngine:
             except json.JSONDecodeError as e:
                 logger.warning(f"Attempt {attempt + 1}: JSON parse error: {e}")
             except Exception as e:
+                mark_failed()
                 logger.warning(f"Attempt {attempt + 1}: LLM call failed: {e}")
 
         logger.error(f"Failed to get valid LLM response after {max_retries} attempts")

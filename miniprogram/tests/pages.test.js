@@ -1,0 +1,23 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('fs'),vm=require('vm');const core=require('../lib/core');
+function page(apiOverride){let definition;let fail=false;global.getApp=()=>({generation:1});global.wx={enableAlertBeforeUnload(){},disableAlertBeforeUnload(){}};const base=require('../lib/page');vm.runInNewContext(fs.readFileSync(require.resolve('../pages/vault/index.js'),'utf8'),{Page:p=>definition=p,require:p=>p.endsWith('/api')?(apiOverride||{call:async()=>{throw Error('offline')}}):p.endsWith('/core')?core:p.endsWith('/presentation')?require('../lib/presentation'):base,wx:global.wx,getApp:()=>global.getApp()});const result={...definition,data:JSON.parse(JSON.stringify(definition.data)),setData(patch){Object.assign(this.data,patch)}};return result}
+test('showVault retains full metadata and original text',()=>{const p=page();p.showVault({id:'a',version:7,raw_content:'original',structured_data:{personal_info:{name:'A'}}});assert.equal(p.data.vault.version,7);assert.equal(p.data.vault.raw_content,'original');assert.equal(p.data.vault.id,'a')});
+test('field changes update bound model and revoke confirmation',()=>{const p=page();p.showVault({structured_data:{_confirmed:true,personal_info:{name:'A'}}});p.field({currentTarget:{dataset:{path:'["personal_info","name"]'}},detail:{value:'B'}});assert.equal(p.data.fields[0].value,'B');assert.equal(p.structured._confirmed,false);assert.equal(p.edited,true)});
+test('failed confirmation save keeps unconfirmed edits',async()=>{const p=page();p.showVault({structured_data:{_confirmed:false,skills:[{name:'Java'}]}});let operation;p.run=fn=>operation=fn();p.saveVault();await assert.rejects(operation,/offline/);assert.equal(p.structured._confirmed,false);assert.equal(p.data.vault.structured_data._confirmed,false)});
+test('busy prevents edits and add operations',()=>{const p=page();p.showVault({structured_data:{skills:[{name:'Java'}]}});p.data.busy=true;p.addRecord({currentTarget:{dataset:{kind:'skills'}}});p.field({currentTarget:{dataset:{path:'["skills","0","name"]'}},detail:{value:'B'}});assert.equal(p.structured.skills.length,1);assert.equal(p.structured.skills[0].name,'Java')});
+test('atomic login waits for identity and retains errors without partial session',async()=>{
+ let definition,resolveMe;
+ const app={generation:1,session:null,login(s){this.session=s;this.generation++}};
+ global.getApp=()=>app;
+ const wxMock={reLaunch(){}};
+ const apiMock={call(path,method,data,form,options){if(path.endsWith('/login'))return Promise.resolve({access_token:'temporary'});assert.equal(options.token,'temporary');return new Promise((resolve,reject)=>resolveMe={resolve,reject})}};
+ vm.runInNewContext(fs.readFileSync(require.resolve('../pages/login/index.js'),'utf8'),{Page:p=>definition=p,require:p=>p.endsWith('/api')?apiMock:p.endsWith('/core')?core:require('../lib/page'),wx:wxMock,getApp:()=>app});
+ const p={...definition,data:JSON.parse(JSON.stringify(definition.data)),setData(patch){Object.assign(this.data,patch)}};
+ p.login();await new Promise(resolve=>setImmediate(resolve));assert.equal(p.data.busy,true);assert.equal(app.session,null);
+ resolveMe.reject(Error('identity unavailable'));await new Promise(resolve=>setImmediate(resolve));assert.equal(app.session,null);assert.equal(p.data.error,'identity unavailable');assert.equal(p.data.busy,false);
+ p.login();await new Promise(resolve=>setImmediate(resolve));assert.equal(p.data.busy,true);resolveMe.resolve({id:'owner'});await new Promise(resolve=>setImmediate(resolve));assert.equal(app.session.user.id,'owner');
+});
+
+
+test('pending parse locks edits save delete and new entries',()=>{const p=page();p.showVault({structured_data:{skills:[{name:'Java'}]}});p.data.pending=true;p.run=()=>assert.fail('must not write');p.field({currentTarget:{dataset:{path:'["skills","0","name"]'}},detail:{value:'bad'}});p.addRecord({currentTarget:{dataset:{kind:'skills'}}});p.saveVault();p.removeVault();assert.equal(p.structured.skills[0].name,'Java');assert.equal(p.structured.skills.length,1)});
+test('delayed old poll cannot restore vault after reset',async()=>{let finish;const p=page({call:()=>new Promise(resolve=>finish=resolve)});const app={generation:1,session:{user:{id:'u'}}};global.getApp=()=>app;global.wx.getStorageSync=()=>({id:'task',time:Date.now()});global.wx.removeStorageSync=()=>{};p.visible=true;p.pendingKey=()=> 'pending:u';const polling=p.poll();assert.equal(p.data.pending,true);p.reset();finish({status:'completed',vault:{id:'old',structured_data:{}}});await polling;assert.equal(p.data.vault,null);assert.equal(p.data.pending,false)});
+

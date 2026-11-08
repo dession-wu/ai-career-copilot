@@ -21,8 +21,7 @@ def get_current_user(
     db: Session = Depends(get_db)
 ) -> User:
     """获取当前登录用户"""
-    logger.info(f"[Auth] Received token: {token[:30]}..." if len(token) > 30 else f"[Auth] Received token: {token}")
-    logger.info(f"[Auth] Authorization header: {request.headers.get('Authorization', 'Not present')}")
+    # Never log bearer tokens or Authorization headers.
     
     auth_service = AuthService(db)
     username = auth_service.verify_token(token)
@@ -83,3 +82,18 @@ def login(
 def get_me(current_user: UserResponse = Depends(get_current_user)):
     """获取当前用户信息"""
     return current_user
+
+from pydantic import BaseModel, Field, ConfigDict
+from app.config import get_settings
+from app.services.wechat_service import exchange_code, resolve_user
+
+class WechatLogin(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    code: str = Field(min_length=1, max_length=512, pattern=r'^\S+$')
+
+@router.post('/wechat', response_model=Token)
+def wechat_login(payload: WechatLogin, db: Session = Depends(get_db)):
+    settings = get_settings()
+    openid = exchange_code(payload.code, settings)
+    user = resolve_user(db, settings.WECHAT_APP_ID, openid)
+    return {'access_token': AuthService(db).create_access_token(data={'sub': user.username}), 'token_type': 'bearer'}

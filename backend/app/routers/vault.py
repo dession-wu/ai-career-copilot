@@ -4,6 +4,7 @@ from typing import List, Optional
 import os
 import uuid
 import logging
+import time
 
 from app.database import get_db
 from app.routers.auth import get_current_user
@@ -19,6 +20,17 @@ logger = logging.getLogger(__name__)
 
 # 内存存储处理状态（生产环境应使用Redis）
 processing_status = {}
+
+
+def _prune_upload_tasks():
+    cutoff = time.time() - 3600
+    for task_id, info in list(processing_status.items()):
+        if info.get('created_at', 0) < cutoff and info.get('status') != 'processing':
+            processing_status.pop(task_id, None)
+
+
+def _set_upload_status(upload_id: str, **updates):
+    processing_status[upload_id] = {**processing_status.get(upload_id, {}), **updates}
 
 
 class ReparseRequest(BaseModel):
@@ -64,6 +76,8 @@ def reparse_vault(
 
 def _process_resume_background(user_id: str, file_path: str, file_ext: str, upload_id: str):
     """后台处理简历文件"""
+    from app.personal_model import CURRENT
+    scope=CURRENT.set(user_id)
     from app.database import SessionLocal
     db = SessionLocal()
     try:
@@ -79,10 +93,7 @@ def _process_resume_background(user_id: str, file_path: str, file_ext: str, uplo
             raw_content = ""
 
         if not raw_content.strip():
-            processing_status[upload_id] = {
-                "status": "error",
-                "message": "无法从文件中提取文本"
-            }
+            _set_upload_status(upload_id, status='error', message='无法从文件中提取文本，请上传包含可选中文字的简历。')
             return
 
         # 提取结构化数据
@@ -108,18 +119,13 @@ def _process_resume_background(user_id: str, file_path: str, file_ext: str, uplo
             db.refresh(new_vault)
             vault = new_vault
 
-        processing_status[upload_id] = {
-            "status": "completed",
-            "message": "处理完成",
-            "vault_id": vault.id
-        }
+        _set_upload_status(upload_id, status='completed', message='处理完成', vault_id=vault.id)
 
     except Exception as e:
-        processing_status[upload_id] = {
-            "status": "error",
-            "message": str(e)
-        }
+        logger.exception('Resume processing failed for upload %s', upload_id)
+        _set_upload_status(upload_id, status='error', message='简历解析未完成，请检查文件后重新上传。')
     finally:
+        CURRENT.reset(scope)
         # 清理临时文件
         if os.path.exists(file_path):
             os.remove(file_path)
@@ -133,7 +139,8 @@ async def get_upload_status(
     current_user: UserResponse = Depends(get_current_user)
 ):
     """获取简历上传处理状态"""
-    if upload_id not in processing_status:
+    _prune_upload_tasks()
+    if upload_id not in processing_status or processing_status[upload_id].get('user_id') != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="未找到上传任务"
@@ -151,9 +158,7 @@ async def get_upload_status(
         if vault:
             response["vault"] = vault
 
-    # 清理已完成的记录
-    if status_info["status"] in ["completed", "error"]:
-        del processing_status[upload_id]
+    # Keep terminal responses readable for retries and page refreshes for one hour.
 
     return response
 
@@ -178,7 +183,7 @@ async def upload_resume(
     content_type = file.content_type or ''
 
     # 如果没有 content_type，尝试从文件名推断
-    if not content_type and file.filename:
+    if content_type in ('', 'application/octet-stream') and file.filename:
         if file.filename.lower().endswith('.pdf'):
             content_type = 'application/pdf'
         elif file.filename.lower().endswith('.docx'):
@@ -196,6 +201,10 @@ async def upload_resume(
     file.file.seek(0, 2)
     file_size = file.file.tell()
     file.file.seek(0)
+    if file_size > settings.MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="文件过大，最大支持 10 MB。")
+    if file_size == 0:
+        raise HTTPException(status_code=400, detail="文件为空，请重新选择简历。")
 
     file_ext = allowed_types[content_type]
 
@@ -224,7 +233,9 @@ async def upload_resume(
     # 初始化处理状态
     processing_status[upload_id] = {
         "status": "processing",
-        "message": "文件正在处理中"
+        "message": "文件正在处理中",
+        "user_id": current_user.id,
+        "created_at": time.time(),
     }
 
     # 启动后台任务
@@ -310,3 +321,5 @@ def delete_vault(
 
     vault_service.delete_vault(vault)
     return None
+
+

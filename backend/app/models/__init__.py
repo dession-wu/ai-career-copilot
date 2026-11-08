@@ -17,3 +17,5 @@ __all__ = [
     "CareerAnalytics",
     "JobStatusHistory",
 ]
+
+from app.models.wechat_identity import WechatIdentity

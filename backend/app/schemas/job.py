@@ -1,12 +1,13 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Literal
 
 
 class JobApplicationBase(BaseModel):
-    company_name: str
-    job_title: str
-    jd_text: str
+    model_config = ConfigDict(str_strip_whitespace=True)
+    company_name: str = Field(min_length=1, max_length=255)
+    job_title: str = Field(min_length=1, max_length=255)
+    jd_text: str = Field(min_length=1, max_length=50000)
 
 
 class JobApplicationCreate(JobApplicationBase):
@@ -17,7 +18,7 @@ class JobApplicationUpdate(BaseModel):
     company_name: Optional[str] = None
     job_title: Optional[str] = None
     jd_text: Optional[str] = None
-    status: Optional[str] = None  # preparing, applied, interviewing, offered, rejected
+    status: Optional[Literal['preparing', 'applied', 'interviewing', 'offered', 'rejected']] = None
     match_score: Optional[float] = None
     match_analysis: Optional[Dict[str, Any]] = None
     tailored_resume_md: Optional[str] = None
@@ -99,6 +100,8 @@ class MatchAnalysisResponse(BaseModel):
     overall_score: int
     skill_match: Dict[str, List[str]]  # matched, missing
     suggestions: List[str]
+    source_vault_version: Optional[int] = None
+    source_jd_text: Optional[str] = None
 
 
 class TailoredResumeResponse(BaseModel):
@@ -114,8 +117,11 @@ class TailoredResumeResponse(BaseModel):
 
 
 class ResumeVersionCreate(BaseModel):
-    content: str
+    content: str = Field(min_length=1, max_length=200000)
     note: Optional[str] = None
+    reviewed: bool = False
+    source_vault_version: Optional[int] = None
+    source_jd_text: Optional[str] = None
 
 
 # ==================== Phase 3: 工作流详情与溯源 Schema ====================

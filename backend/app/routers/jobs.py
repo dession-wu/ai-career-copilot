@@ -1,3 +1,4 @@
+from app.personal_model import mark_failed
 from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
@@ -28,7 +29,7 @@ from app.schemas.job import (
     ProvenanceItem,
 )
 from app.services.job_service import JobService
-from app.services.llm_service import LLMService
+from app.services.llm_service import LLMService, LLMConfigError, validate_llm_base_url, _keyword_in_text
 from app.services.vault_service import VaultService
 from app.services.pdf_service import get_pdf_service
 from app.services.job_extraction import JobExtractionService, JobExtractionRequest
@@ -213,6 +214,9 @@ def analyze_job(
     llm_service = LLMService(db)
     analysis = llm_service.analyze_match(vault.structured_data, job.jd_text)
 
+    analysis['source_vault_version'] = vault.version
+    analysis['source_jd_text'] = job.jd_text
+
     # 保存分析结果
     job_service.update_match_analysis(job, analysis["overall_score"], analysis)
 
@@ -303,7 +307,9 @@ def analyze_job_weighted(
         "confidence": result.confidence,
         "dimension_scores": response_data["dimension_scores"],
         "skill_match": result.skill_match,
-        "processing_time_ms": result.processing_time_ms
+        "processing_time_ms": result.processing_time_ms,
+        "suggestions": suggestions,
+        "details": result.details,
     }
     job_service.update_match_analysis(job, result.overall_score, analysis_to_save)
 
@@ -321,7 +327,7 @@ def analyze_job_weighted(
 @router.post("/{job_id}/tailor", response_model=TailoredResumeResponse)
 def tailor_resume(
     job_id: str,
-    llm_config: dict = None,
+    llm_config: Optional[dict] = None,
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user)
 ):
@@ -361,11 +367,18 @@ def tailor_resume(
         )
 
     # 调用 LLM 服务生成定制简历（带防幻觉校验）
-    result = llm_service.tailor_resume(
-        vault.structured_data,
-        job.jd_text,
-        llm_config
-    )
+    try:
+        result = llm_service.tailor_resume(
+            vault.structured_data,
+            job.jd_text,
+            llm_config
+        )
+    except LLMConfigError as e:
+        # base_url 未通过白名单校验：返回 400，错误信息不含 api_key
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
     # 提取简历内容
     tailored_content = result["resume"]
@@ -428,6 +441,16 @@ async def tailor_resume_stream(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请先上传简历到 Career Vault"
         )
+
+    # 安全校验：进入 SSE 流之前先校验 base_url 白名单（一旦开始流式返回将无法再返回 400）
+    if llm_config:
+        try:
+            validate_llm_base_url(llm_config.get("base_url"))
+        except LLMConfigError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
 
     async def event_generator() -> AsyncGenerator[str, None]:
         """SSE 事件生成器"""
@@ -494,6 +517,7 @@ async def tailor_resume_stream(
                 yield f"data: {json.dumps({'type': 'mapping', 'data': mapping_result}, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0.01)
             except Exception as e:
+                mark_failed()
                 logger.error(f"Step 1 failed: {e}")
                 mapping_result = {"required_skills": [], "skill_mapping": {}, "missing_skills": [], "highlight_projects": []}
 
@@ -529,6 +553,7 @@ async def tailor_resume_stream(
                 
                 logger.info("Step 2 - Resume streaming generation completed")
             except Exception as e:
+                mark_failed()
                 logger.error(f"Step 2 streaming failed: {e}")
                 yield f"data: {json.dumps({'type': 'error', 'message': f'生成失败: {str(e)}'}, ensure_ascii=False)}\n\n"
                 return
@@ -555,6 +580,7 @@ async def tailor_resume_stream(
             yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
             
         except Exception as e:
+            mark_failed()
             logger.error(f"SSE stream error: {e}")
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
 
@@ -620,18 +646,25 @@ def save_resume_version(
             detail="无权访问此求职投递"
         )
 
-    # 初始化版本列表
-    if not job.tailored_resume_versions:
-        job.tailored_resume_versions = []
-
-    # 添加新版本
+    vault = VaultService(db).get_vault_by_user_id(current_user.id)
+    if version_data.reviewed:
+        if (not vault or not vault.structured_data.get('_confirmed')
+                or version_data.source_vault_version != vault.version
+                or version_data.source_jd_text != job.jd_text):
+            raise HTTPException(status_code=409, detail="经历或职位描述已变化，请重新核对当前资料后保存确认版本。")
+    versions = list(job.tailored_resume_versions or [])
+    # Assign a new JSON list: an in-place append is not tracked by plain SQLAlchemy JSON.
     new_version = {
-        "version": len(job.tailored_resume_versions) + 1,
+        "version": len(versions) + 1,
         "content": version_data.content,
         "note": version_data.note,
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": datetime.utcnow().isoformat(),
+        "reviewed": version_data.reviewed,
+        "source_vault_version": version_data.source_vault_version,
+        "source_jd_text": version_data.source_jd_text,
     }
-    job.tailored_resume_versions.append(new_version)
+    job.tailored_resume_versions = versions + [new_version]
+    job.tailored_resume_md = version_data.content
 
     db.commit()
     db.refresh(job)
@@ -749,6 +782,15 @@ def export_resume_pdf(
             detail="请先生成定制简历"
         )
 
+    vault = vault_service.get_vault_by_user_id(current_user.id)
+    versions = job.tailored_resume_versions or []
+    latest = versions[-1] if versions else {}
+    if (not vault or not vault.structured_data.get('_confirmed')
+            or not latest.get('reviewed') or latest.get('content') != resume_content
+            or latest.get('source_vault_version') != vault.version
+            or latest.get('source_jd_text') != job.jd_text):
+        raise HTTPException(status_code=409, detail="请先对照当前经历核对简历，保存确认版本后再导出。")
+
     # 生成PDF
     try:
         result = pdf_service.generate_pdf(
@@ -781,6 +823,7 @@ def export_resume_pdf(
         )
 
     except Exception as e:
+        mark_failed()
         logger.error(f"PDF export failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -882,6 +925,7 @@ async def extract_job_from_file(
     except HTTPException:
         raise
     except Exception as e:
+        mark_failed()
         logger.error(f"Job extraction failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -893,6 +937,7 @@ async def extract_job_from_file(
             try:
                 os.unlink(temp_file)
             except Exception as e:
+                mark_failed()
                 logger.warning(f"Failed to delete temp file: {e}")
 
 
@@ -959,6 +1004,7 @@ async def confirm_extracted_job(
         return JobApplicationResponse.from_orm(job)
         
     except Exception as e:
+        mark_failed()
         logger.error(f"Failed to create job from extraction: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1060,6 +1106,7 @@ def update_job_status_with_history(
         db.rollback()
         raise
     except Exception as e:
+        mark_failed()
         db.rollback()
         logger.error(f"[StatusUpdate] Unexpected error: {str(e)}")
         raise HTTPException(
@@ -1183,6 +1230,7 @@ def get_workflow_details(
                 response = llm_client.invoke(messages)
                 mapping_data = json.loads(response.content)
         except Exception as e:
+            mark_failed()
             logger.error(f"Failed to generate skill mapping: {e}")
             mapping_data = {"required_skills": [], "skill_mapping": {}, "missing_skills": [], "highlight_projects": []}
 
@@ -1218,7 +1266,7 @@ def get_workflow_details(
         for skill, mapping in skill_mapping.items():
             if mapping.get("found_in_resume", False):
                 evidence = mapping.get("evidence", "")
-                if skill.lower() in exp_description.lower() or skill.lower() in exp_title.lower():
+                if _keyword_in_text(skill, exp_description) or _keyword_in_text(skill, exp_title):
                     match_score += 10
                     matched_skills.append(skill)
         

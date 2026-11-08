@@ -78,7 +78,7 @@ class VaultService:
         content_type = file.content_type or ''
 
         # 如果没有 content_type，尝试从文件名推断
-        if not content_type and file.filename:
+        if content_type in ('', 'application/octet-stream') and file.filename:
             if file.filename.lower().endswith('.pdf'):
                 content_type = 'application/pdf'
             elif file.filename.lower().endswith('.docx'):
@@ -945,3 +945,4 @@ class VaultService:
             self.db.commit()
             self.db.refresh(new_vault)
             return new_vault
+

@@ -1,0 +1,8 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "cd app && npm install && npm run build",
+  "outputDirectory": "app/.next",
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://ai-career-copilot-api.onrender.com"
+  }
+}

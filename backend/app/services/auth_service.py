@@ -1,3 +1,5 @@
+import secrets
+from app.session_control import is_revoked
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
@@ -27,11 +29,11 @@ class AuthService:
         """创建新用户"""
         # 检查用户名是否已存在
         if self.db.query(User).filter(User.username == user_data.username).first():
-            raise ValueError("Username already registered")
+            raise ValueError("用户名已存在")
         
         # 检查邮箱是否已存在
         if self.db.query(User).filter(User.email == user_data.email).first():
-            raise ValueError("Email already registered")
+            raise ValueError("邮箱已存在")
 
         hashed_password = self.get_password_hash(user_data.password)
         db_user = User(
@@ -69,7 +71,7 @@ class AuthService:
             expire = datetime.utcnow() + expires_delta
         else:
             expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-        to_encode.update({"exp": expire})
+        to_encode.update({"exp": expire, "jti": secrets.token_urlsafe(24)})
         encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
         return encoded_jwt
 
@@ -78,9 +80,12 @@ class AuthService:
         """验证 JWT 令牌"""
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+            if is_revoked(token,payload):return None
             username: str = payload.get("sub")
             if username is None:
                 return None
             return username
         except JWTError:
             return None
+
+

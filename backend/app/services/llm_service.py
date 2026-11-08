@@ -1,8 +1,11 @@
+from app.personal_model import mark_failed
 import json
+import os
 import re
 import logging
 import math
 from typing import Dict, List, Any, Optional
+from urllib.parse import urlparse
 from datetime import datetime
 from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
@@ -11,6 +14,49 @@ from app.config import get_settings
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
+
+
+_KEYWORD_PATTERN_CACHE: Dict[str, "re.Pattern"] = {}
+
+
+def _build_keyword_pattern(keyword: str) -> "re.Pattern":
+    """
+    构建关键词的词边界正则（防止子串误匹配）。
+
+    规则：
+    - 关键词首/尾为 ASCII 字母数字时，要求边界外不是字母数字
+    - 超短关键词（长度<=2，如 "C"/"R"/"Go"）额外排除紧邻的 + # & . 等符号，
+      避免 "C++" 命中 "C"、"R&D" 命中 "R"
+    - 中文关键词保持原子串语义
+    """
+    kw = keyword.strip()
+    escaped = re.escape(kw)
+    if kw:
+        first, last = kw[0], kw[-1]
+        short = len(kw) <= 2
+        if first.isascii() and first.isalnum():
+            left = r'(?<![A-Za-z0-9+#&.])' if short else r'(?<![A-Za-z0-9])'
+            escaped = left + escaped
+        if last.isascii() and last.isalnum():
+            right = r'(?![A-Za-z0-9+#&])' if short else r'(?![A-Za-z0-9])'
+            escaped = escaped + right
+    return re.compile(escaped, re.IGNORECASE)
+
+
+def _get_keyword_pattern(keyword: str) -> "re.Pattern":
+    """获取（并缓存）关键词的词边界正则"""
+    pat = _KEYWORD_PATTERN_CACHE.get(keyword)
+    if pat is None:
+        pat = _build_keyword_pattern(keyword)
+        _KEYWORD_PATTERN_CACHE[keyword] = pat
+    return pat
+
+
+def _keyword_in_text(keyword: str, text: str) -> bool:
+    """词边界判断关键词是否出现在文本中（大小写不敏感）"""
+    if not text:
+        return False
+    return _get_keyword_pattern(keyword).search(text) is not None
 
 
 @dataclass
@@ -535,6 +581,61 @@ def normalize_keyword(keyword: str) -> str:
     return keyword
 
 
+
+class LLMConfigError(ValueError):
+    """LLM 配置校验失败（如 base_url 不在白名单内）"""
+
+
+# LLM base_url 域名白名单（防止用户透传 base_url 导致简历 PII 发往任意地址）
+# 可通过环境变量 LLM_ALLOWED_BASE_URLS（逗号分隔域名）覆盖；设置为 * 可关闭白名单校验（仅限本地开发）
+DEFAULT_LLM_ALLOWED_DOMAINS = [
+    "openai.com",
+    "dashscope.aliyuncs.com",
+    "bigmodel.cn",
+    "moonshot.cn",
+    "deepseek.com",
+    "anthropic.com",
+]
+
+
+def _get_allowed_llm_domains() -> List[str]:
+    """读取 LLM base_url 白名单配置；返回 ["*"] 表示关闭校验"""
+    raw = os.environ.get("LLM_ALLOWED_BASE_URLS", "")
+    if raw.strip() == "*":
+        return ["*"]
+    if raw.strip():
+        return [d.strip().lower() for d in raw.split(",") if d.strip()]
+    return DEFAULT_LLM_ALLOWED_DOMAINS
+
+
+def validate_llm_base_url(base_url: str) -> None:
+    """
+    校验外部传入的 LLM base_url 是否指向白名单内域名。
+
+    校验失败抛出 LLMConfigError（错误信息不含 api_key，可安全返回给调用方）。
+    """
+    if not base_url:
+        return
+
+    allowed = _get_allowed_llm_domains()
+    if "*" in allowed:
+        return
+
+    try:
+        host = (urlparse(str(base_url)).hostname or "").lower()
+    except ValueError:
+        host = ""
+
+    if not host:
+        raise LLMConfigError("LLM base_url 格式无效，请检查后重试")
+
+    if not any(host == d or host.endswith("." + d) for d in allowed):
+        raise LLMConfigError(
+            f"LLM base_url 域名 '{host}' 不在允许列表内，"
+            f"允许的域名: {', '.join(allowed)}"
+        )
+
+
 class LLMService:
     def __init__(self, db: Session = None):
         self.db = db
@@ -641,7 +742,6 @@ class LLMService:
         Returns:
             str: 岗位类型标识符
         """
-        jd_text_lower = jd_text.lower()
         scores = {}
 
         for job_type, config in self.DYNAMIC_WEIGHT_CONFIGS.items():
@@ -650,7 +750,7 @@ class LLMService:
 
             score = 0
             for keyword in config["keywords"]:
-                if keyword.lower() in jd_text_lower:
+                if _keyword_in_text(keyword, jd_text):
                     score += 1
             scores[job_type] = score
 
@@ -677,8 +777,8 @@ class LLMService:
 
     def _get_llm_client(self, llm_config: Optional[Dict[str, Any]] = None):
         """获取 LLM 客户端，支持多种 provider"""
-        if not llm_config:
-            return None
+        from app.personal_model import llm_options, TrackedClient
+        llm_config = llm_options()
 
         api_key = llm_config.get("api_key")
         base_url = llm_config.get("base_url")
@@ -687,6 +787,14 @@ class LLMService:
         if not api_key:
             return None
 
+        # 安全校验：base_url 必须命中白名单，防止简历等 PII 数据被发往任意地址
+        # 校验失败抛出 LLMConfigError，由路由层转换为 400 返回（日志与错误信息均不含 api_key）
+        try:
+            validate_llm_base_url(base_url)
+        except LLMConfigError as e:
+            logger.error(f"LLM base_url rejected by whitelist: {e}")
+            raise
+
         try:
             from langchain_openai import ChatOpenAI
 
@@ -694,11 +802,71 @@ class LLMService:
                 model=model,
                 api_key=api_key,
                 base_url=base_url if base_url else None,
+                extra_body={"enable_thinking": False} if llm_config["model"] == "qwen3.7-flash" else {},
+                timeout=90,
+                max_retries=1,
                 temperature=0.7,
             )
-            return client
+            return TrackedClient(client)
         except Exception as e:
+            mark_failed()
             logger.error(f"Failed to initialize LLM client: {e}")
+            return None
+
+    async def generate_json(
+        self,
+        prompt: str,
+        llm_config: Optional[Dict[str, Any]] = None
+    ) -> Optional[Dict[str, Any]]:
+        """调用 LLM 生成并解析 JSON 结果（复盘分析等服务使用）"""
+        llm_client = self._get_llm_client(llm_config)
+
+        if False:  # Public products never use a server-owned API Key.
+            # 未传入外部配置时，使用服务端默认配置兜底（官方默认地址，域名安全）
+            if not settings.OPENAI_API_KEY:
+                logger.error("generate_json: no llm_config and settings.OPENAI_API_KEY is empty")
+                return None
+            try:
+                from langchain_openai import ChatOpenAI
+
+                llm_client = ChatOpenAI(
+                    model=settings.LLM_MODEL,
+                    api_key=settings.OPENAI_API_KEY,
+                    temperature=0.7,
+                )
+            except Exception as e:
+                mark_failed()
+                logger.error(f"Failed to initialize default LLM client: {e}")
+                return None
+
+        if not llm_client:
+            return None
+
+        from langchain_core.messages import HumanMessage, SystemMessage
+
+        messages = [
+            SystemMessage(content="你是数据分析助手，只输出严格合法的 JSON，不要任何解释性文字或 Markdown 代码围栏。"),
+            HumanMessage(content=prompt),
+        ]
+
+        try:
+            response = llm_client.invoke(messages)
+            content = response.content if isinstance(response.content, str) else str(response.content)
+            content = content.strip()
+
+            # 清理模型可能输出的 Markdown 代码围栏
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.startswith("```"):
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+
+            result = json.loads(content.strip())
+            return result
+        except Exception as e:
+            mark_failed()
+            logger.error(f"generate_json failed: {e}")
             return None
 
     def _extract_keywords(self, text: str) -> List[str]:
@@ -708,14 +876,16 @@ class LLMService:
         使用全局 ALL_KEYWORDS 列表进行匹配，支持 500+ 技术关键词
         """
         found_keywords = set()
-        text_upper = text.upper()
 
-        # 使用扩展的关键词库进行匹配
+        # 使用扩展的关键词库进行词边界匹配（不区分大小写，防止子串误匹配）
         for keyword in ALL_KEYWORDS:
-            # 简单的子串匹配（不区分大小写）
-            if keyword.upper() in text_upper:
+            if _keyword_in_text(keyword, text):
                 found_keywords.add(keyword)
 
+        aliases = {'Go': ('Golang',), 'React': ('ReactJS', 'React.js'), 'Vue': ('VueJS', 'Vue.js'), 'HTML': ('HTML', 'HTML5')}
+        for canonical, variants in aliases.items():
+            if any(_keyword_in_text(variant, text) for variant in variants):
+                found_keywords.add(canonical)
         return list(found_keywords)
 
     def _extract_keywords_with_weights(self, text: str) -> Dict[str, Any]:
@@ -730,18 +900,17 @@ class LLMService:
                 "category_scores": Dict[str, float]  # 各类别得分
             }
         """
-        text_upper = text.upper()
         found_keywords = []
         by_category = {}
         category_scores = {}
 
-        # 按类别提取关键词
+        # 按类别提取关键词（词边界匹配，防止子串误匹配）
         for category_name, category_data in KEYWORD_CATEGORIES.items():
             category_keywords = []
             weight = category_data["weight"]
 
             for keyword in category_data["keywords"]:
-                if keyword.upper() in text_upper:
+                if _keyword_in_text(keyword, text):
                     category_keywords.append(keyword)
                     found_keywords.append(keyword)
 
@@ -1045,6 +1214,8 @@ class LLMService:
         total_weight = 0.0
 
         for dim in dimension_scores:
+            if dim.details.get('reason') == 'JD中无此类别要求':
+                continue
             # 使用动态权重
             weight = dynamic_weights.get(dim.dimension, dim.weight)
             total_weighted_score += dim.score * weight
@@ -1145,6 +1316,8 @@ class LLMService:
         total_weight = 0.0
 
         for dim in dimension_scores:
+            if dim.details.get('reason') == 'JD中无此类别要求':
+                continue
             total_weighted_score += dim.score * dim.weight
             total_weight += dim.weight
 
@@ -1315,13 +1488,13 @@ class LLMService:
         suggestions = []
 
         if matched:
-            suggestions.append(f"您的简历已涵盖以下关键技能：{', '.join(matched[:5])}")
+            suggestions.append(f"经历文本中找到以下技能线索，请核对实际职责与熟悉程度：{', '.join(matched[:5])}")
 
         if missing:
-            suggestions.append(f"建议补充以下技能关键词：{', '.join(missing[:5])}")
+            suggestions.append(f"以下要求暂未找到充分证据；如实际具备，请补充真实项目或职责说明：{', '.join(missing[:5])}")
             suggestions.append("在简历中突出与目标岗位相关的项目经验")
         else:
-            suggestions.append("您的技能匹配度很高！建议进一步量化项目成果")
+            suggestions.append("当前未列出额外技能缺口，请继续核对岗位要求；仅在有真实记录时补充量化成果")
 
         return suggestions
 
@@ -1352,58 +1525,59 @@ class LLMService:
         return self._tailor_resume_llm(vault_data, jd_text, llm_client)
 
     def _tailor_resume_fallback(self, vault_data: Dict[str, Any], jd_text: str) -> str:
-        """基础模式：高亮匹配关键词"""
-        jd_keywords = self._extract_keywords(jd_text)
-        resume_text = vault_data.get("raw_text_preview", "")
+        """Create an editable resume from supplied facts only, without invented examples."""
+        personal = vault_data.get('personal_info') or {}
+        parts = ['# ' + (personal.get('name') or '个人简历')]
+        contacts = [str(personal[key]) for key in ['email', 'phone', 'linkedin', 'website'] if personal.get(key)]
+        if contacts:
+            parts.append(' · '.join(contacts))
+        if vault_data.get('summary'):
+            parts.extend(['## 个人概述', str(vault_data['summary'])])
 
-        # 提取匹配段落
-        matched_sections = []
-        lines = resume_text.split('\n')
-        current_section = []
+        keywords = self._extract_keywords(jd_text)
+        skills = vault_data.get('skills') or []
+        names = [item.get('name', '') if isinstance(item, dict) else str(item) for item in skills]
+        names = [name for name in names if name]
+        names.sort(key=lambda name: not any(_keyword_in_text(kw, name) for kw in keywords))
+        if names:
+            parts.extend(['## 技能', '、'.join(names)])
 
-        for line in lines:
-            line_keywords = self._extract_keywords(line)
-            if set(line_keywords) & set(jd_keywords):
-                current_section.append(line)
-            elif current_section:
-                if len(current_section) >= 2:  # 至少 2 行才算一个段落
-                    matched_sections.append('\n'.join(current_section))
-                current_section = []
-
-        # 添加最后一段
-        if current_section and len(current_section) >= 2:
-            matched_sections.append('\n'.join(current_section))
-
-        # 生成报告
-        report = f"""# 简历定制报告（基础模式）
-
-> ⚠️ **提示**：由于未配置大模型 API Key，系统仅为您提取了以下命中关键词的经历。建议配置 API Key 以获得 AI 智能定制功能。
-
-## 目标岗位关键词分析
-
-从 JD 中提取到的关键技能：
-{chr(10).join(['- ' + kw for kw in jd_keywords[:15]])}
-
-## 匹配段落高亮
-
-以下段落包含与 JD 匹配的关键词：
-
-{chr(10).join(['---\n**匹配段落 ' + str(i+1) + '：**\n```\n' + section + '\n```' for i, section in enumerate(matched_sections[:5])])}
-
-## 优化建议
-
-1. 在以上高亮段落中，确保突出显示与岗位相关的技能
-2. 使用 JD 中的关键词来描述您的经历
-3. 量化您的成果（如：提升性能 30%，处理 100万+ 数据等）
-4. 补充缺失的关键技能：{', '.join([kw for kw in jd_keywords[:5] if kw not in self._extract_keywords(resume_text)])}
-
----
-*原始简历文本预览：*
-
-{resume_text[:1000]}...
-"""
-
-        return report
+        for heading, key, fields in [
+            ('工作经历', 'experiences', ['company', 'title']),
+            ('项目经历', 'projects', ['name', 'role']),
+            ('教育经历', 'education', ['school', 'degree', 'field']),
+        ]:
+            entries = vault_data.get(key) or []
+            if not entries:
+                continue
+            parts.append('## ' + heading)
+            for item in entries:
+                if not isinstance(item, dict):
+                    parts.append(str(item))
+                    continue
+                title = ' · '.join(str(item[f]) for f in fields if item.get(f))
+                if title:
+                    parts.append('### ' + title)
+                period = ' — '.join(str(item[f]) for f in ['start_date', 'end_date'] if item.get(f))
+                if period:
+                    parts.append(period)
+                for field in ['description', 'star_description', 'achievements', 'responsibilities']:
+                    value = item.get(field)
+                    if isinstance(value, list):
+                        parts.extend('- ' + str(v) for v in value)
+                    elif value:
+                        parts.append(str(value))
+                for project in item.get('projects') or []:
+                    if isinstance(project, dict):
+                        if project.get('name'):
+                            parts.append('**' + str(project['name']) + '**')
+                        if project.get('description'):
+                            parts.append(str(project['description']))
+                        if project.get('technologies'):
+                            parts.append('、'.join(map(str, project['technologies'])))
+        if len(parts) == 1 and vault_data.get('raw_text_preview'):
+            parts.append(str(vault_data['raw_text_preview']))
+        return '\n\n'.join(parts)
 
     def _tailor_resume_llm(
         self,
@@ -1454,6 +1628,7 @@ class LLMService:
             mapping_result = json.loads(response_step1.content)
             logger.info(f"Step 1 - Skill mapping completed. Missing skills: {mapping_result.get('missing_skills', [])}")
         except Exception as e:
+            mark_failed()
             logger.error(f"Step 1 failed: {e}")
             mapping_result = {"required_skills": [], "skill_mapping": {}, "missing_skills": [], "highlight_projects": []}
 
@@ -1481,6 +1656,7 @@ class LLMService:
             generated_resume = response_step2.content
             logger.info("Step 2 - Resume generation completed")
         except Exception as e:
+            mark_failed()
             logger.error(f"Step 2 failed: {e}")
             return {
                 "resume": self._tailor_resume_fallback(vault_data, jd_text),
@@ -1528,6 +1704,7 @@ class LLMService:
                 )
                 logger.info(f"Regeneration verification. Level: {verification_result['hallucination_level']}")
             except Exception as e:
+                mark_failed()
                 logger.error(f"Regeneration failed: {e}")
 
         return {
@@ -1645,6 +1822,7 @@ class LLMService:
             logger.error(f"Failed to parse LLM response as JSON: {e}")
             return {}
         except Exception as e:
+            mark_failed()
             logger.error(f"LLM parsing failed: {e}")
             return {}
 
@@ -1693,6 +1871,7 @@ class LLMService:
             result = json.loads(response.content)
             return result if isinstance(result, list) else []
         except Exception as e:
+            mark_failed()
             logger.error(f"Interview question generation failed: {e}")
             return self._generate_fallback_questions(jd_text)
 
@@ -1739,3 +1918,5 @@ class LLMService:
         ]
 
         return questions
+
+

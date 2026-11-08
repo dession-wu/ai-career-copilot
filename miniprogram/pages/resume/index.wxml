@@ -1,0 +1,19 @@
+<view wx:if="{{authenticated}}" class="wrap"><view class="page-head"><view class="title">岗位简历</view><text class="pill {{saved === content && content?'green':'blue'}}">{{saved === content && content?'已确认保存':content?'编辑中':'待生成'}}</text></view><view class="resume-context">{{job.company_name}} · {{job.job_title}}</view>
+ <view wx:if="{{!ready && !busy}}"><view class="sub">请先确认经历。</view><button data-page="vault" bindtap="go">去确认经历</button></view>
+ <button wx:if="{{ready && !content}}" bindtap="generate" disabled="{{busy}}">生成简历</button>
+ <view wx:if="{{content}}"><view wx:if="{{sourceStale}}" class="error">来源已变化，需重新核对。<button class="text-button" bindtap="reconfirm" disabled="{{busy}}">更新资料来源</button></view>
+ <button class="text-button" bindtap="toggleSource">{{showSource?'收起原简历':'对照原简历'}}</button><text wx:if="{{showSource}}" class="raw source-panel" selectable>{{sourceRaw || '暂无原文'}}</text>
+ <view class="editor-caption">简历内容<text>可直接编辑</text></view><textarea aria-label="岗位简历内容" class="editor" maxlength="-1" value="{{content}}" data-key="content" bindinput="input" disabled="{{busy}}"/>
+ <view wx:if="{{result}}" class="card"><view class="section-heading">{{verified?'事实核对':'生成提示'}}</view><text class="raw" selectable>{{result}}</text></view>
+ <view wx:if="{{!sourceStale}}">
+  <button wx:if="{{!verified}}" bindtap="verify" disabled="{{busy}}">检查内容</button>
+  <view wx:if="{{verified && saved !== content}}" class="notice amber"><view class="sub">辅助检查可能遗漏，请对照原简历核对。</view><checkbox-group bindchange="review"><label><checkbox value="yes" checked="{{reviewed}}" disabled="{{busy}}"/>我已核对，内容真实</label></checkbox-group><button bindtap="saveResume" disabled="{{busy || !reviewed}}">确认并保存</button></view>
+  <view wx:if="{{saved === content}}"><view class="sub">已保存确认版本</view><button bindtap="exportFile" disabled="{{busy}}">导出简历</button></view>
+ </view>
+ <button wx:if="{{saved !== content && !reviewed}}" class="text-button" bindtap="saveResume" disabled="{{busy}}">暂存草稿</button>
+ 
+ <button class="text-button" bindtap="generate" disabled="{{busy}}">重新生成</button>
+ </view>
+ <button wx:if="{{versions.length}}" class="text-button" bindtap="toggleHistory">{{showHistory?'收起历史版本':'历史版本（'+versions.length+'）'}}</button><view wx:if="{{showHistory}}"><view wx:for="{{versions}}" wx:key="version" class="file-row"><view class="file-info">版本 {{item.version}} · {{item.reviewed?'已确认':'草稿'}}</view><button class="text-button" data-index="{{index}}" bindtap="loadVersion" disabled="{{busy}}">载入</button></view></view>
+ <view wx:if="{{exportDone}}" class="sheet-backdrop"><view class="export-sheet"><view class="card-head"><view class="heading">{{fallback?'文本导出':'PDF 已打开'}}</view><button class="text-button compact" bindtap="closeExport">关闭</button></view><view class="notice {{fallback?'amber':'green'}}">{{fallback?'PDF 暂不可用，确认版本已保留。可复制文本继续使用。':'可通过文件菜单保存或分享 PDF。'}}</view><scroll-view wx:if="{{fallback}}" scroll-y class="export-preview"><text class="raw" selectable>{{fallback}}</text></scroll-view><button wx:if="{{fallback}}" bindtap="copy">复制纯文本</button><button class="secondary" data-page="jobs" bindtap="go">返回岗位列表</button></view></view>
+ <view wx:if="{{busy}}" class="sub">处理中…</view><view wx:if="{{error}}" class="error">{{error}}</view><view wx:if="{{message}}" class="sub">{{message}}</view></view>

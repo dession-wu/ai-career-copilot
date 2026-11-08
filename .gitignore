@@ -7,11 +7,15 @@ backend/__pycache__/
 .env
 .env.local
 !.env.example
+frontend/.env.app
+frontend/.env.production
+frontend/.env.local
 
 # Database
 *.db
 *.sqlite
 *.sqlite3
+backend/*.db.bak*
 
 # Uploads
 uploads/
@@ -56,8 +60,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
+
 parts/
 sdist/
 var/
@@ -96,3 +100,32 @@ backend/models/
 *.node
 .vercel
 .env*.local
+node_modules
+
+# Local encrypted personal model credentials and usage ledger
+/private-model-data/
+
+# Local runtime data and private configuration
+node_modules/
+.next/
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.db
+*.sqlite*
+*.log
+*.tsbuildinfo
+/private-model-data/
+/data/
+**/uploads/
+project.private.config.json
+*.pem
+*.key
+
+# Generated resume exports are private runtime artifacts
+/backend/app/templates/pdf/*.pdf

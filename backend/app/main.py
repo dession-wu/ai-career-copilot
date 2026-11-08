@@ -161,3 +161,19 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+
+from app.personal_model import install as install_personal_model
+install_personal_model(app)
+
+
+from app.session_control import install as install_sessions
+from jose import jwt as session_jwt
+from app.config import get_settings as session_settings
+def decode_logout_token(token):
+    try:
+        config=session_settings()
+        payload=session_jwt.decode(token,config.SECRET_KEY,algorithms=[config.ALGORITHM])
+        from app.session_control import is_revoked
+        return None if is_revoked(token,payload) else payload
+    except Exception:return None
+install_sessions(app,'/api',decode_logout_token)

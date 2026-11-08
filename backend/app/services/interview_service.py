@@ -39,6 +39,13 @@ class InterviewService:
         获取或生成面试题
         如果已存在则返回现有题目，否则生成新题目
         """
+        # Authorize before reading existing questions, not only before generation.
+        job = self.db.query(JobApplication).filter(
+            JobApplication.id == job_id,
+            JobApplication.user_id == user_id
+        ).first()
+        if not job:
+            raise HTTPException(status_code=404, detail="Job application not found")
         # 先检查是否已有面试题
         existing_questions = self.get_questions_by_job(job_id)
         if existing_questions:

@@ -1,0 +1,18 @@
+<view class="wrap login-page">
+ <view class="login-brand"><image src="/assets/brand.png" class="brand-icon"/><view class="brand-name">简历指南</view></view>
+ <view class="title">登录简历指南</view>
+ <view class="intro">整理经历，准备下一份简历。</view>
+ <button class="wechat-button" bindtap="wechat" loading="{{busy}}" disabled="{{busy}}">微信一键登录</button>
+ 
+ <button class="text-button" bindtap="toggleAccount" disabled="{{busy}}">{{showAccount?'收起账号登录':'账号登录'}} <text>⌄</text></button>
+ <view wx:if="{{showAccount}}" class="account-form">
+  <view class="heading">{{register?'创建账户':'账号登录'}}</view>
+  <view class="label">账号</view><input aria-label="账号" data-key="username" value="{{username}}" bindinput="input" maxlength="255" disabled="{{busy}}" />
+  <view wx:if="{{register}}"><view class="label">邮箱</view><input aria-label="邮箱" data-key="email" value="{{email}}" bindinput="input" disabled="{{busy}}" /></view>
+  <view class="label">密码</view><input aria-label="密码" password value="{{password}}" data-key="password" bindinput="input" disabled="{{busy}}"/>
+  <button bindtap="login" disabled="{{busy || !username || !password}}">{{register?'注册并登录':'登录'}}</button>
+  <button class="text-button" bindtap="toggle" disabled="{{busy}}">{{register?'已有账户，去登录':'创建账号'}}</button>
+ </view>
+ <view wx:if="{{error}}" class="error">{{error}}</view>
+ 
+</view>

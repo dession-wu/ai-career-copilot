@@ -65,6 +65,6 @@ RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
 
 USER pptruser
 
-EXPOSE 3001
+EXPOSE 3002
 
 CMD ["node", "server.js"]

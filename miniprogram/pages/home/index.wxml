@@ -1,0 +1,17 @@
+<view wx:if="{{authenticated}}" class="wrap dashboard">
+ <view class="page-head"><view class="title">我的简历</view><image class="header-mark" src="/assets/brand.png"/></view>
+ <view class="page-intro">整理真实经历，准备目标岗位的简历。</view>
+ <view wx:if="{{busy}}" class="loading-card"><view class="spinner"/>正在读取档案</view>
+ <view wx:if="{{error}}" class="error">{{error}}<button class="text-button" bindtap="reload">重试</button></view>
+ <view wx:if="{{loaded && !hasVault && !pending}}">
+  <view class="resume-sheet empty-sheet"><view class="sheet-tab"/><image src="/assets/document.png" class="empty-document"/><view class="heading">放入你的第一份简历</view><view class="sub">工作、项目与教育经历，<text class="line-break">在这里整理成一份档案。</text></view><view class="sheet-format">PDF / DOCX · 最大 10 MB</view></view>
+  <button class="main-action" data-page="vault" data-upload="1" bindtap="go">上传简历 <text>↑</text></button>
+ </view>
+ <view wx:if="{{loaded && pending}}"><view class="resume-sheet"><view class="sheet-top"><text class="sheet-label">经历档案</text><text class="pill amber">解析中</text></view><view class="document-state"><view class="spinner"/><view class="heading">正在整理经历</view><view class="sub">完成后，你可以核对和补充信息。</view></view></view><button class="main-action" data-page="vault" bindtap="go">查看解析进度 <text>→</text></button></view>
+ <view wx:if="{{loaded && hasVault && !pending && !confirmed}}"><view class="resume-sheet"><view class="sheet-tab"/><view class="sheet-top"><text class="sheet-label">经历档案</text><text class="pill amber">待核对</text></view><view class="document-state"><view class="sheet-name">{{summary.name}}</view><view class="sub">经历已整理，等待你核对。</view><view class="caption">确认信息准确后，再按岗位调整简历。</view></view></view><button class="main-action" data-page="vault" bindtap="go">核对经历 <text>→</text></button></view>
+ <view wx:if="{{loaded && confirmed && !pending}}">
+  <view class="resume-sheet"><view class="sheet-tab"/><view class="sheet-top"><text class="sheet-label">经历档案</text><text class="pill green">已核对</text></view><view class="sheet-name">{{summary.name}}</view><view class="sheet-role">{{summary.role || '个人经历档案'}}</view><view class="sheet-rule"/><view class="sheet-label">最近经历</view><view class="sheet-company">{{summary.company || '尚未填写工作经历'}}</view><view class="sheet-skills" wx:if="{{summary.skills.length}}"><text wx:for="{{summary.skills}}" wx:key="*this">{{index?' / ':''}}{{item}}</text></view><view class="sheet-meta">{{summary.experienceCount}} 段工作经历<text>·</text>{{summary.educationCount}} 段教育经历</view></view>
+  <button class="main-action" data-page="vault" bindtap="go">查看与编辑 <text>→</text></button>
+ </view>
+ <view wx:if="{{loaded}}" class="next-task" data-page="jobs" bindtap="go" role="button"><view><view class="heading small">目标岗位<text wx:if="{{jobCount}}" class="inline-count">{{jobCount}}</text></view><view class="sub">{{confirmed?'选择岗位，准备专属简历':'确认经历后，按岗位调整简历'}}</view></view><text class="row-arrow">↗</text></view>
+</view>

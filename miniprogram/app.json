@@ -1,0 +1,44 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/login/index",
+    "pages/vault/index",
+    "pages/jobs/index",
+    "pages/detail/index",
+    "pages/resume/index",
+    "pages/settings/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "简历指南",
+    "navigationBarBackgroundColor": "#f7f5f0",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f7f5f0"
+  },
+  "style": "v2",
+  "tabBar": {
+    "color": "#8a8073",
+    "selectedColor": "#713746",
+    "backgroundColor": "#f7f5f0",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "简历",
+        "iconPath": "assets/tab-home.png",
+        "selectedIconPath": "assets/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/jobs/index",
+        "text": "岗位",
+        "iconPath": "assets/tab-jobs.png",
+        "selectedIconPath": "assets/tab-jobs-active.png"
+      },
+      {
+        "pagePath": "pages/settings/index",
+        "text": "我的",
+        "iconPath": "assets/tab-settings.png",
+        "selectedIconPath": "assets/tab-settings-active.png"
+      }
+    ]
+  }
+}

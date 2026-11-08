@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    WECHAT_APP_ID: str = ""
+    WECHAT_APP_SECRET: str = ""
+
     # LLM 配置
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
@@ -29,6 +32,10 @@ class Settings(BaseSettings):
     # 文件上传配置
     UPLOAD_DIR: str = "./uploads"
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
+
+    # PDF 服务配置（可选，指向独立的 pdf-service 服务）
+    PDF_SERVICE_URL: str = "http://localhost:3002"
+    PDF_SERVICE_TIMEOUT: float = 60.0
 
     # CORS 配置 - 支持从环境变量 JSON 字符串解析
     CORS_ORIGINS_JSON: str = ""  # 生产环境使用: '["https://your-app.vercel.app"]'
@@ -68,3 +75,4 @@ def get_settings() -> Settings:
 def generate_secret_key() -> str:
     """生成安全的随机密钥"""
     return secrets.token_urlsafe(32)
+
